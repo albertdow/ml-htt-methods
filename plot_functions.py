@@ -83,12 +83,14 @@ def plot_scatter_matrix(X, figname):
     # need to resample DataFrame
     df = X.ix[random.sample(X.index, 100)]
     # df =
+
     plt.figure()
     sm = scatter_matrix(df, figsize=(20,20), alpha=0.4, s=60, c=['y','r'])
     plt.savefig(figname)
     print 'Scatter matrix saved as {}'.format(figname)
 
     return None
+
 
 def plot_confusion_matrix(y_test, y_pred, classes, figname, normalise=False, cmap=plt.cm.Blues):
 
