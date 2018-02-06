@@ -79,6 +79,8 @@ def plot_roc_curve(fpr, tpr, auc, figname):
 
 
 def plot_scatter_matrix(X, figname):
+    ## THIS FUNCTION CURRENTLY DOESNT DO WHAT IT SHOULD
+    ##
 
     # need to resample DataFrame
     df = X.ix[random.sample(X.index, 100)]
@@ -143,6 +145,28 @@ def plot_features(booster, imp_type, figname):
 
     return None
 
-def plot_correlation_matrix():
-    ### NOT FINISHED
-    pass
+def plot_correlation_matrix(data, figname, **kwds):
+
+    corrmat = data.corr(**kwds)
+
+    fig, ax = plt.subplots(ncols=1, figsize=(6,5))
+
+    opts = {'cmap': plt.get_cmap("RdBu"),
+            'vmin': -1, 'vmax': +1}
+    heatmap1 = ax.pcolor(corrmat, **opts)
+    plt.colorbar(heatmap1, ax=ax)
+
+    ax.set_title("")
+
+    labels = corrmat.columns.values
+    for ax in (ax,):
+        # shift location of ticks to center of the bins
+        ax.set_xticks(np.arange(len(labels))+0.5, minor=False)
+        ax.set_yticks(np.arange(len(labels))+0.5, minor=False)
+        ax.set_xticklabels(labels, minor=False, ha='right', rotation=70)
+        ax.set_yticklabels(labels, minor=False)
+
+    plt.tight_layout()
+    fig.savefig(figname)
+    print 'Correlation matrix saved as {}'.format(figname)
+

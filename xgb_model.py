@@ -20,7 +20,9 @@ from sklearn.metrics import confusion_matrix
 from plot_functions import plot_roc_curve
 from plot_functions import plot_scatter_matrix
 from plot_functions import plot_confusion_matrix
+from plot_functions import plot_correlation_matrix
 from plot_functions import plot_features
+
 from load_functions import load_ntuple
 from load_functions import load_files
 # from class_weight import create_class_weight
@@ -56,6 +58,7 @@ if not opt.skip:
 
     print ggh_file[0]
     ggh = load_ntuple(path + ggh_file[0] + '.root','ntuple', features, cut_features)
+    plot_correlation_matrix(ggh.drop(['wt'], axis=1), 'ggh_correlation_matrix.pdf')
 
     bkgs = []
     for bkg in bkg_files:
@@ -63,6 +66,7 @@ if not opt.skip:
         bkg_tmp = load_ntuple(path + bkg + '.root','ntuple', features, cut_features)
         bkgs.append(bkg_tmp)
     bkgs = pd.concat(bkgs, ignore_index=False)
+    plot_correlation_matrix(bkgs.drop(['wt'], axis=1), 'bkgs_correlation_matrix.pdf')
 
 
 
@@ -82,6 +86,10 @@ if not opt.skip:
     w = np.array(X['wt'])
     X = X.drop(['wt'], axis=1).reset_index(drop=True)
 
+    # plot_correlation_matrix(X, 'correlation_matrix.pdf')
+
+    ## Just some test to correct scatter_matrix
+
     # plt.figure()
     # sns.set(style='ticks')
     # df = X
@@ -92,6 +100,7 @@ if not opt.skip:
     # plt.savefig('pairplot.pdf')
     # plt.close()
     # plot_scatter_matrix(X, 'scatter_matrix.pdf')
+
 
     params = {}
 
