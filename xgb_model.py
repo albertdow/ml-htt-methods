@@ -179,7 +179,7 @@ if not opt.skip:
                 test_size=0.5, random_state=1234)
 
         xg_train = xgb.DMatrix(X_train, label=y_train, missing=-9999, weight=w_train)
-        xg_test = xgb.DMatrix(X_test, label=y_test, missing=-9999, weight=w_test)
+        xg_test = xgb.DMatrix(X_test, label=y_test, missing=-9999)#, weight=w_test)
 
         # params['booster'] = 'dart'
         params['objective'] = 'binary:logistic'
@@ -299,7 +299,7 @@ if opt.skip:
     # pf.plot_output(prediction, 'output.pdf')
     ## NEED TO THINK ABOUT WEIGHTS
 xg_train = xgb.DMatrix(X_train, label=y_train, missing=-9999, weight=w_train)
-xg_test = xgb.DMatrix(X_test, label=y_test, missing=-9999, weight=w_test)
+xg_test = xgb.DMatrix(X_test, label=y_test, missing=-9999)#, weight=w_test)
 
 pf.plot_output(bst, xg_train, xg_test, y_train, y_test, 'output.pdf')
 
