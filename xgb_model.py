@@ -16,15 +16,9 @@ from pandas.plotting import scatter_matrix
 from sklearn.metrics import confusion_matrix
 
 # custom modules
-# from plot_functions import plot_signal_background
-from plot_functions import plot_roc_curve
-from plot_functions import plot_scatter_matrix
-from plot_functions import plot_confusion_matrix
-from plot_functions import plot_correlation_matrix
-from plot_functions import plot_features
+import plot_functions as pf
+import load_functions as lf
 
-from load_functions import load_ntuple
-from load_functions import load_files
 # from class_weight import create_class_weight
 # from data_class import Data
 # from data_class import Sample
@@ -40,8 +34,8 @@ opt = parser.parse_args()
 
 
 if not opt.skip:
-    ggh_file = load_files('ggh_files.txt')
-    bkg_files = load_files('background_files.txt')
+    ggh_file = lf.load_files('ggh_files.txt')
+    bkg_files = lf.load_files('background_files.txt')
 
     path = '/vols/cms/akd116/Offline/output/SM/2018/Jan26/'
 
@@ -57,49 +51,50 @@ if not opt.skip:
 
 
     print ggh_file[0]
-    ggh = load_ntuple(path + ggh_file[0] + '.root','ntuple', features, cut_features)
-    plot_correlation_matrix(ggh.drop(['wt'], axis=1), 'ggh_correlation_matrix.pdf')
+    ggh = lf.load_ntuple(path + ggh_file[0] + '.root','ntuple', features, cut_features)
+    # pf.plot_correlation_matrix(ggh.drop(['wt'], axis=1), 'ggh_correlation_matrix.pdf')
 
     bkgs = []
     for bkg in bkg_files:
         print bkg
-        bkg_tmp = load_ntuple(path + bkg + '.root','ntuple', features, cut_features)
+        bkg_tmp = lf.load_ntuple(path + bkg + '.root','ntuple', features, cut_features)
         bkgs.append(bkg_tmp)
     bkgs = pd.concat(bkgs, ignore_index=False)
-    plot_correlation_matrix(bkgs.drop(['wt'], axis=1), 'bkgs_correlation_matrix.pdf')
+    # pf.plot_correlation_matrix(bkgs.drop(['wt'], axis=1), 'bkgs_correlation_matrix.pdf')
 
 
 
     y_sig = pd.DataFrame(np.ones(ggh.shape[0]))
     y_bkgs = pd.DataFrame(np.zeros(bkgs.shape[0]))
     y = pd.concat([y_sig, y_bkgs])
-    y.columns = ['y']
+    y.columns = ['class']
 
     class_weights = class_weight.compute_class_weight('balanced',
                                                 np.unique(np.array(y).ravel()),
                                                 np.array(y).ravel())
+    print class_weights
 
     bkgs['wt'] = bkgs['wt'] * class_weights[0]
     ggh['wt'] = ggh['wt'] * class_weights[1]
 
     X = pd.concat([ggh, bkgs])
+    X['class'] = y.values
+
     w = np.array(X['wt'])
     X = X.drop(['wt'], axis=1).reset_index(drop=True)
 
-    # plot_correlation_matrix(X, 'correlation_matrix.pdf')
+    # pf.plot_correlation_matrix(X, 'correlation_matrix.pdf')
 
     ## Just some test to correct scatter_matrix
 
     # plt.figure()
     # sns.set(style='ticks')
     # df = X
-    # print y.values
     # df['classes'] = y.values
-
     # sns.pairplot(df.ix[random.sample(df.index, 1000)], hue='classes')
     # plt.savefig('pairplot.pdf')
     # plt.close()
-    # plot_scatter_matrix(X, 'scatter_matrix.pdf')
+    # pf.plot_scatter_matrix(X, 'scatter_matrix.pdf')
 
 
     params = {}
@@ -176,14 +171,19 @@ if not opt.skip:
 
     # Train_test_split mode
     if opt.mode == 'ttsplit':
-        X_train,X_test, y_train,y_test,w_train,w_test  = train_test_split(X, y, w,
-                test_size=0.5, random_state=1234)
+        # X_train,X_test, y_train,y_test,w_train,w_test  = train_test_split(X, y, w,
+        #         test_size=0.5, random_state=1234)
 
+        # TO MAKE SURE INDICES ARE CORRECT
+        X_train,X_test, y_train,y_test,w_train,w_test  = train_test_split(X.drop(['class'], axis=1), X['class'], w,
+                test_size=0.5, random_state=1234)
 
         xg_train = xgb.DMatrix(X_train, label=y_train, missing=-9999, weight=w_train)
         xg_test = xgb.DMatrix(X_test, label=y_test, missing=-9999, weight=w_test)
 
+        # params['booster'] = 'dart'
         params['objective'] = 'binary:logistic'
+        params['subsample'] = 0.8
         params['eta'] = 0.1
         params['max_depth'] = 5
         params['nthread'] = 4
@@ -202,11 +202,20 @@ if not opt.skip:
         # plot_importance(features, feat_score_weight, 'features_weight.pdf')
 
         prediction = bst.predict(xg_test)
+        fig, ax = plt.subplots()
+        ax.hist(prediction)
+        ax.set_yscale('log', nonposy='clip')
+        fig.savefig('ttsplit_output.pdf')
+
+
 
         ## ROC CURVE
 
         fpr, tpr, _ = roc_curve(y_test, prediction)
         auc = roc_auc_score(y_test, prediction)
+
+        # pf.plot_roc_curve(fpr, tpr, auc, 'dart_ttsplit_roc.pdf')
+        ## SAVE FOR SKIP
 
         with open('fpr.pkl', 'w') as f:
             pickle.dump(fpr, f)
@@ -216,10 +225,47 @@ if not opt.skip:
             pickle.dump(auc, f)
         with open('pred.pkl', 'w') as f:
             pickle.dump(prediction, f)
+        with open('X_train.pkl', 'w') as f:
+            pickle.dump(X_train, f)
+        with open('y_train.pkl', 'w') as f:
+            pickle.dump(y_train, f)
+        with open('X_test.pkl', 'w') as f:
+            pickle.dump(X_test, f)
         with open('y_test.pkl', 'w') as f:
             pickle.dump(y_test, f)
+        with open('w_test.pkl', 'w') as f:
+            pickle.dump(w_test, f)
+        with open('w_train.pkl', 'w') as f:
+            pickle.dump(w_train, f)
         with open('booster.pkl', 'w') as f:
             pickle.dump(bst, f)
+
+    ## JUST SOME TESTS WITH THE SKLEARN WRAPPER
+    if opt.mode == 'sklearn_ttsplit':
+        X_train,X_test, y_train,y_test,w_train,w_test  = train_test_split(X.drop(['class'], axis=1), X['class'], w,
+                test_size=0.5, random_state=1234)
+
+        xgb_clf = xgb.XGBClassifier(learning_rate = 0.1, max_depth = 5,
+                            # min_child_weight = 1,
+                            # gamma = 0,
+                            # subsample = 0.8,
+                            # colsample_bytree = 0.8,
+                            seed=27
+                            )
+        xgb_clf.fit(X_train, y_train, sample_weight = w_train, eval_metric = 'logloss')
+        y_predicted_xgb = xgb_clf.predict(X_test)
+        print classification_report(y_test, y_predicted_xgb,
+                                    target_names=["background", "signal"],
+                                    sample_weight=w_test)
+
+        # y_pred = xgb_clf.predict_proba(y_test)
+        # auc = roc_auc_score(y_test, y_pred)
+        # fpr, tpr, _ = roc_curve(y_test, y_pred)
+
+        # pf.plot_roc_curve(fpr, tpr, auc, 'sklearn_ttsplit_roc.pdf')
+        pf.plot_output(xgb_clf, X_train, y_train, X_test, y_test, 'sklearn_output.pdf')
+
+
 
 if opt.skip:
     if opt.mode == 'ttsplit':
@@ -231,21 +277,41 @@ if opt.skip:
             auc = pickle.load(f)
         with open('pred.pkl', 'r') as f:
             prediction = pickle.load(f)
+        with open('X_train.pkl', 'r') as f:
+            X_train = pickle.load(f)
+        with open('y_train.pkl', 'r') as f:
+            y_train = pickle.load(f)
+        with open('X_test.pkl', 'r') as f:
+            X_test = pickle.load(f)
         with open('y_test.pkl', 'r') as f:
             y_test = pickle.load(f)
+        with open('w_test.pkl', 'r') as f:
+            w_test = pickle.load(f)
+        with open('w_train.pkl', 'r') as f:
+            w_train = pickle.load(f)
         with open('booster.pkl', 'r') as f:
             bst = pickle.load(f)
 
+    # print prediction
+    # print prediction[y_test>0.5]
 
-    # roc_fig = plot_roc_curve(fpr, tpr, auc, 'ttsplit_roc.pdf')
 
-    # y_pred = [round(value) for value in prediction]
+    # pf.plot_output(prediction, 'output.pdf')
+    ## NEED TO THINK ABOUT WEIGHTS
+xg_train = xgb.DMatrix(X_train, label=y_train, missing=-9999, weight=w_train)
+xg_test = xgb.DMatrix(X_test, label=y_test, missing=-9999, weight=w_test)
+
+pf.plot_output(bst, xg_train, xg_test, y_train, y_test, 'output.pdf')
+
+# roc_fig = pf.plot_roc_curve(fpr, tpr, auc, 'ttsplit_roc.pdf')
+
+# y_pred = [round(value) for value in prediction]
     ## CHECK CLASSES ORDER..........
-    # plot_confusion_matrix(y_test, y_pred, classes=['signal', 'background'],
-    #                 figname='non-normalised_cm.pdf', normalise=False)
+# pf.plot_confusion_matrix(y_test, y_pred, w_test, classes=['background', 'signal'],
+#                 figname='non-normalised_weights_cm.pdf', normalise=False)
 
-    # plot_confusion_matrix(y_test, y_pred, classes=['signal', 'background'],
-    #                 figname='normalised_cm.pdf', normalise=True)
+# pf.plot_confusion_matrix(y_test, y_pred, w_test, classes=['background', 'signal'],
+                # figname='normalised_weights_cm.pdf', normalise=True)
 
-    # plot_features(bst, 'weight', 'features_weight.pdf')
+    # pf.plot_features(bst, 'weight', 'features_weight.pdf')
 
