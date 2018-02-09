@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import pickle
 import argparse
 from scipy import interp
+from root_numpy import array2root
 # import seaborn as sns
 
 from sklearn.utils import class_weight
@@ -47,7 +48,7 @@ if not opt.skip:
     # features to train on
     features = ['pt_1', 'pt_2', 'eta_1', 'eta_2', 'dphi', 'm_vis',
             'met', 'met_dphi_1', 'met_dphi_2', 'pt_tt',
-            'mt_1', 'mt_2', 'mt_lep', 'wt']
+            'mt_1', 'mt_2', 'mt_lep', 'n_jets', 'n_bjets', 'wt']
 
 
     print ggh_file[0]
@@ -62,20 +63,25 @@ if not opt.skip:
     bkgs = pd.concat(bkgs, ignore_index=False)
     # pf.plot_correlation_matrix(bkgs.drop(['wt'], axis=1), 'bkgs_correlation_matrix.pdf')
 
+    n_ratio = bkgs.shape[0]/ggh.shape[0]
 
 
     y_sig = pd.DataFrame(np.ones(ggh.shape[0]))
     y_bkgs = pd.DataFrame(np.zeros(bkgs.shape[0]))
+    print y_sig.shape
+    print y_bkgs.shape
     y = pd.concat([y_sig, y_bkgs])
     y.columns = ['class']
 
-    class_weights = class_weight.compute_class_weight('balanced',
-                                                np.unique(np.array(y).ravel()),
-                                                np.array(y).ravel())
-    print class_weights
+    ### TRY USING scale_pos_weight INSTEAD OF CLASS_WEIGHTS
 
-    bkgs['wt'] = bkgs['wt'] * class_weights[0]
-    ggh['wt'] = ggh['wt'] * class_weights[1]
+    # class_weights = class_weight.compute_class_weight('balanced',
+    #                                             np.unique(np.array(y).ravel()),
+    #                                             np.array(y).ravel())
+    # print class_weights
+
+    # bkgs['wt'] = bkgs['wt'] * class_weights[0]
+    # ggh['wt'] = ggh['wt'] * class_weights[1]
 
     X = pd.concat([ggh, bkgs])
     X['class'] = y.values
@@ -126,7 +132,17 @@ if not opt.skip:
         for train_index, test_index in cv.split(X, y):
             X_train, X_test = X[train_index], X[test_index]
             y_train, y_test = y[train_index], y[test_index]
-            w_train, w_test = w[train_index], w[test_index]
+            w_train = w[train_index]
+            if y[test_index] == 0.0:
+                w_test = w[test_index] / class_weights[0]
+                print 'should be 0.0: ', y[test_index]
+                print w[test_index]
+                print w_test
+            elif y[test_index] == 1.0:
+                w_test = w[test_index] / class_weights[1]
+                print 'should be 1.0: ', y[test_index]
+                print w[test_index]
+                print w_test
 
             xg_train = xgb.DMatrix(X_train, label=y_train, missing=-9999, weight=w_train)
             xg_test = xgb.DMatrix(X_test, label=y_test, missing=-9999, weight=w_test)
@@ -176,23 +192,35 @@ if not opt.skip:
 
         # TO MAKE SURE INDICES ARE CORRECT
         X_train,X_test, y_train,y_test,w_train,w_test  = train_test_split(X.drop(['class'], axis=1), X['class'], w,
-                test_size=0.5, random_state=1234)
+                test_size=0.33, random_state=1234)
+
+        ## TRY USING scale_pos_weight INSTEAD OF CLASS_WEIGHTS
+
+        # for i, val in enumerate(y_test):
+        #     if val == 0.0:
+        #         w_test[i] = w_test[i] / class_weights[0]
+        #     elif val == 1.0:
+        #         w_test[i] = w_test[i] / class_weights[1]
 
         xg_train = xgb.DMatrix(X_train, label=y_train, missing=-9999, weight=w_train)
-        xg_test = xgb.DMatrix(X_test, label=y_test, missing=-9999)#, weight=w_test)
+        xg_test = xgb.DMatrix(X_test, label=y_test, missing=-9999, weight=w_test)
+
 
         # params['booster'] = 'dart'
         params['objective'] = 'binary:logistic'
-        params['subsample'] = 0.8
-        params['eta'] = 0.1
-        params['max_depth'] = 5
+        params['subsample'] = 0.5
+        params['eta'] = 0.01
+        params['max_depth'] = 6
+        params['max_delta_step'] = 1
+        params['scale_pos_weight'] = n_ratio
+        params['gamma'] = 1
         params['nthread'] = 4
         params['silent'] = 1
         params['eval_metric'] = ['auc','error','logloss']
 
         watchlist = [(xg_train, 'train'), (xg_test, 'test')]
-        num_round = 1000
-        stop_round = 50
+        num_round = 2000
+        stop_round = 70
         bst = xgb.train(params, xg_train, num_round, early_stopping_rounds=stop_round, evals=watchlist)
 
         # feat_score_gain = bst.get_score(importance_type='gain')
@@ -202,10 +230,10 @@ if not opt.skip:
         # plot_importance(features, feat_score_weight, 'features_weight.pdf')
 
         prediction = bst.predict(xg_test)
-        fig, ax = plt.subplots()
-        ax.hist(prediction)
-        ax.set_yscale('log', nonposy='clip')
-        fig.savefig('ttsplit_output.pdf')
+        # fig, ax = plt.subplots()
+        # ax.hist(prediction)
+        # ax.set_yscale('log', nonposy='clip')
+        # fig.savefig('noclassw_ttsplit_output.pdf')
 
 
 
@@ -214,7 +242,7 @@ if not opt.skip:
         fpr, tpr, _ = roc_curve(y_test, prediction)
         auc = roc_auc_score(y_test, prediction)
 
-        # pf.plot_roc_curve(fpr, tpr, auc, 'dart_ttsplit_roc.pdf')
+        # pf.plot_roc_curve(fpr, tpr, auc, 'noclassw_ttsplit_roc.pdf')
         ## SAVE FOR SKIP
 
         with open('fpr.pkl', 'w') as f:
@@ -295,23 +323,93 @@ if opt.skip:
     # print prediction
     # print prediction[y_test>0.5]
 
+        # fig, ax = plt.subplots()
+        # ax.hist(prediction)
+        # ax.set_yscale('log', nonposy='clip')
+        # fig.savefig('ttsplit_output.pdf')
 
-    # pf.plot_output(prediction, 'output.pdf')
-    ## NEED TO THINK ABOUT WEIGHTS
+        # fpr, tpr, _ = roc_curve(y_test, prediction)
+        # auc = roc_auc_score(y_test, prediction)
+
+        # pf.plot_roc_curve(fpr, tpr, auc, 'ttsplit_roc.pdf')
+
+    # pf.plot_output(prediction, 'noclassw_output.pdf')
+
 xg_train = xgb.DMatrix(X_train, label=y_train, missing=-9999, weight=w_train)
-xg_test = xgb.DMatrix(X_test, label=y_test, missing=-9999)#, weight=w_test)
-
-pf.plot_output(bst, xg_train, xg_test, y_train, y_test, 'output.pdf')
+xg_test = xgb.DMatrix(X_test, label=y_test, missing=-9999, weight=w_test)
+# pf.plot_output(bst, xg_train, xg_test, y_train, y_test, 'output.pdf')
 
 # roc_fig = pf.plot_roc_curve(fpr, tpr, auc, 'ttsplit_roc.pdf')
 
 # y_pred = [round(value) for value in prediction]
-    ## CHECK CLASSES ORDER..........
+#     ## CHECK CLASSES ORDER..........
 # pf.plot_confusion_matrix(y_test, y_pred, w_test, classes=['background', 'signal'],
 #                 figname='non-normalised_weights_cm.pdf', normalise=False)
 
 # pf.plot_confusion_matrix(y_test, y_pred, w_test, classes=['background', 'signal'],
-                # figname='normalised_weights_cm.pdf', normalise=True)
+#                 figname='normalised_weights_cm.pdf', normalise=True)
 
-    # pf.plot_features(bst, 'weight', 'features_weight.pdf')
+# pf.plot_features(bst, 'weight', 'features_weight.pdf')
+
+
+# pf.plot_output(bst, xg_train, xg_test, y_train, y_test, 'noclassw_output.pdf')
+
+ggh_file = lf.load_files('ggh_files.txt')
+bkg_files = lf.load_files('background_files.txt')
+
+path = '/vols/cms/akd116/Offline/output/SM/2018/Jan26/'
+
+# cut_features will only be used for preselection
+# and then dropped again
+cut_features = ['iso_1', 'mva_olddm_medium_2', 'antiele_2', 'antimu_2',
+        'leptonveto', 'trg_singlemuon', 'trg_mutaucross']
+
+# features to train on
+features = ['pt_1', 'pt_2', 'eta_1', 'eta_2', 'dphi', 'm_vis',
+        'met', 'met_dphi_1', 'met_dphi_2', 'pt_tt',
+        'mt_1', 'mt_2', 'mt_lep', 'n_jets', 'n_bjets', 'wt']
+
+
+print ggh_file[0]
+ggh = lf.load_ntuple(path + ggh_file[0] + '.root','ntuple', features, cut_features)
+print ggh['n_bjets']
+# pf.plot_correlation_matrix(ggh.drop(['wt'], axis=1), 'ggh_correlation_matrix.pdf')
+
+bkgs = []
+for bkg in bkg_files:
+    print bkg
+    bkg_tmp = lf.load_ntuple(path + bkg + '.root','ntuple', features, cut_features)
+    bkgs.append(bkg_tmp)
+bkgs = pd.concat(bkgs, ignore_index=False)
+# pf.plot_correlation_matrix(bkgs.drop(['wt'], axis=1), 'bkgs_correlation_matrix.pdf')
+
+n_ratio = bkgs.shape[0]/ggh.shape[0]
+
+y_sig = pd.DataFrame(np.ones(ggh.shape[0]))
+y_bkgs = pd.DataFrame(np.zeros(bkgs.shape[0]))
+y = pd.concat([y_sig, y_bkgs])
+y.columns = ['class']
+
+### TRY USING scale_pos_weight INSTEAD OF CLASS_WEIGHTS
+
+# class_weights = class_weight.compute_class_weight('balanced',
+#                                             np.unique(np.array(y).ravel()),
+#                                             np.array(y).ravel())
+# print class_weights
+
+# bkgs['wt'] = bkgs['wt'] * class_weights[0]
+# ggh['wt'] = ggh['wt'] * class_weights[1]
+
+X = pd.concat([ggh, bkgs])
+X['class'] = y.values
+
+w = np.array(X['wt'])
+X = X.drop(['wt', 'class'], axis=1).reset_index(drop=True)
+
+xg_full = xgb.DMatrix(X, label=y, missing=-9999, weight=w)
+
+y_predicted = bst.predict(xg_full)
+y_predicted.dtype = [('y', np.float64)]
+
+array2root(y_predicted, './tmp/test-prediction.root', 'BDToutput')
 
