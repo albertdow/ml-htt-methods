@@ -43,34 +43,59 @@ parser.add_argument('-s', action='store_true', default=False,
         dest='skip', help='skip training procedure (default False)')
 parser.add_argument('--mode', action='store', default='ttsplit',
         help='training procedure (default train_test_split)')
+parser.add_argument('--channel', action='store', default='mt',
+        help='channels to train on')
 
 opt = parser.parse_args()
 
 
 if not opt.skip:
-    ggh_file = lf.load_files('ggh_files.txt')
-    bkg_files = lf.load_files('background_files.txt')
+    print '\nTraining model on {} channel\n'.format(opt.channel)
+    sig_files = lf.load_files('./filelist/{0}/{0}_sig_files.dat'.format(opt.channel))
+    bkg_files = lf.load_files('./filelist/{0}/{0}_bkgs_files.dat'.format(opt.channel))
 
-    path = '/vols/cms/akd116/Offline/output/SM/2018/Jan26/'
 
     # cut_features will only be used for preselection
     # and then dropped again
     cut_features = ['iso_1', 'mva_olddm_medium_2', 'antiele_2', 'antimu_2',
-            'leptonveto', 'trg_singlemuon', 'trg_mutaucross']
+            'leptonveto', 'trg_singlemuon', 'trg_mutaucross', 'os']
 
     # features to train on
     features = ['pt_1', 'pt_2', 'eta_1', 'eta_2', 'dphi', 'm_vis',
-            'met', 'met_dphi_1', 'met_dphi_2', 'pt_tt',
+            'm_sv', 'met', 'met_dphi_1', 'met_dphi_2', 'pt_tt',
             'mt_1', 'mt_2', 'mt_lep', 'n_jets', 'n_bjets', 'wt']
 
+    path = '/vols/cms/akd116/Offline/output/SM/2018/Feb13/'
 
-    print ggh_file[0]
-    ggh = lf.load_ntuple(
-            path + ggh_file[0] + '.root',
-            'ntuple',
-            features,
-            cut_features
-            )
+    ggh = []
+    for sig in sig_files:
+        print sig
+        sig_tmp = lf.load_ntuple(
+                path + sig + '.root',
+                'ntuple',
+                features,
+                opt.channel,
+                cut_features
+                )
+        ggh.append(sig_tmp)
+
+    ggh = pd.concat(ggh, ignore_index=True)
+    print ggh
+    # print sig_files[0]
+    # ggh_powheg = lf.load_ntuple(
+    #         path + sig_files[0] + '.root',
+    #         'ntuple',
+    #         features,
+    #         cut_features
+    #         )
+    # print sig_files[1]
+    # ggh_JHU_sm = lf.load_ntuple(
+    #         path + sig_files[1] + '.root',
+    #         'ntuple',
+    #         features,
+    #         cut_features
+    #         )
+
 
     # pf.plot_correlation_matrix(
     #         ggh.drop(['wt'], axis=1),
@@ -83,16 +108,17 @@ if not opt.skip:
                 path + bkg + '.root',
                 'ntuple',
                 features,
+                opt.channel,
                 cut_features
                 )
 
         bkgs.append(bkg_tmp)
-    bkgs = pd.concat(bkgs, ignore_index=False)
+
+    bkgs = pd.concat(bkgs, ignore_index=True)
 
     # pf.plot_correlation_matrix(
     #         bkgs.drop(['wt'], axis=1),
     #         'bkgs_correlation_matrix.pdf')
-
 
     y_sig = pd.DataFrame(np.ones(ggh.shape[0]))
     y_bkgs = pd.DataFrame(np.zeros(bkgs.shape[0]))
@@ -110,7 +136,6 @@ if not opt.skip:
 
     # bkgs['wt'] = bkgs['wt'] * class_weights[0]
     # ggh['wt'] = ggh['wt'] * class_weights[1]
-
 
 
 
