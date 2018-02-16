@@ -117,7 +117,7 @@ def load_data_ntuple(data, tree, branch, sig, channel, cut_feats):
                         & (df_b['trg_doubletau'] == True)
                         ]
 
-            if channel == 'mt':
+            elif channel == 'mt':
                 df_b = df_b[
                         (df_b['iso_1'] < 0.15)
                         & (df_b['mva_olddm_medium_2'] > 0.5)
@@ -130,7 +130,7 @@ def load_data_ntuple(data, tree, branch, sig, channel, cut_feats):
                         & (df_b['os'] == False)
                         ]
 
-            if channel == 'et':
+            elif channel == 'et':
                 df_b = df_b[
                         (df_b['iso_1'] < 0.1)
                         & (df_b['mva_olddm_medium_2'] > 0.5)
@@ -142,7 +142,7 @@ def load_data_ntuple(data, tree, branch, sig, channel, cut_feats):
                         & (df_b['os'] == False)
                         ]
 
-            if channel == 'em':
+            elif channel == 'em':
                 df_b = df_b[
                         (df_b['iso_1'] < 0.15)
                         & (df_b['iso_2'] < 0.2)
