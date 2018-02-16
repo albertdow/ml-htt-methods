@@ -3,50 +3,81 @@ import os
 import pandas as pd
 import numpy as np
 
-def load_ntuple(data, tree, branch, channel, cut_feats):
+def load_mc_ntuple(data, tree, branch, sig, channel, cut_feats):
     ## LOAD MC NTUPLES AND APPLY BASELINE CUTS BY CHANNEL
 
-    iterator = uproot.iterate(data, tree, branches=branch+cut_feats)
+    try:
+        iterator = uproot.iterate(data, tree, branches=branch+cut_feats)
+    except IOError:
+        print 'Tree/Branches not found'
 
     df = []
     for block in iterator:
         df_b = pd.DataFrame(block)
 
-        if channel == 'tt':
-            df_b = df_b[(df_b['pt_1'] > 40)
-                    & (df_b['mva_olddm_medium_1'] > 0.5)
-                    & (df_b['mva_olddm_medium_2'] > 0.5)
-                    & (df_b['antiele_1'] == True)
-                    & (df_b['antimu_1'] == True)
-                    & (df_b['antiele_2'] == True)
-                    & (df_b['antimu_2'] == True)
-                    & (df_b['leptonveto'] == False)
-                    & (df_b['trg_doubletau'] == True)]
+        try:
+            if channel == 'tt':
+                df_b = df_b[
+                        (df_b['pt_1'] > 40)
+                        & (df_b['mva_olddm_medium_1'] > 0.5)
+                        & (df_b['mva_olddm_medium_2'] > 0.5)
+                        & (df_b['antiele_1'] == True)
+                        & (df_b['antimu_1'] == True)
+                        & (df_b['antiele_2'] == True)
+                        & (df_b['antimu_2'] == True)
+                        & (df_b['leptonveto'] == False)
+                        & (df_b['trg_doubletau'] == True)
+                        ]
 
-        if channel == 'mt':
-            df_b = df_b[(df_b['iso_1'] < 0.15)
-                    & (df_b['mva_olddm_medium_2'] > 0.5)
-                    & (df_b['antiele_2'] == True)
-                    & (df_b['antimu_2'] == True)
-                    & (df_b['leptonveto'] == False)
-                    & (df_b['pt_2'] > 20)
-                    & ((df_b['trg_singlemuon']*df_b['pt_1'] > 23)
-                        | (df_b['trg_mutaucross']*df_b['pt_1'] < 23))]
+            elif channel == 'mt':
+                df_b = df_b[
+                        (df_b['iso_1'] < 0.15)
+                        & (df_b['mva_olddm_medium_2'] > 0.5)
+                        & (df_b['antiele_2'] == True)
+                        & (df_b['antimu_2'] == True)
+                        & (df_b['leptonveto'] == False)
+                        & (df_b['pt_2'] > 20)
+                        & ((df_b['trg_singlemuon']*df_b['pt_1'] > 23)
+                            | (df_b['trg_mutaucross']*df_b['pt_1'] < 23))
+                        ]
 
-        if channel == 'et':
-            df_b = df_b[(df_b['iso_1'] < 0.1)
-                    & (df_b['mva_olddm_medium_2'] > 0.5)
-                    & (df_b['antiele_2'] == True)
-                    & (df_b['antimu_2'] == True)
-                    & (df_b['leptonveto'] == False)
-                    & (df_b['pt_2'] > 20)
-                    & (df_b['trg_singleelectron'] == True)]
+            elif channel == 'et':
+                df_b = df_b[
+                        (df_b['iso_1'] < 0.1)
+                        & (df_b['mva_olddm_medium_2'] > 0.5)
+                        & (df_b['antiele_2'] == True)
+                        & (df_b['antimu_2'] == True)
+                        & (df_b['leptonveto'] == False)
+                        & (df_b['pt_2'] > 20)
+                        & (df_b['trg_singleelectron'] == True)
+                        ]
 
-        if channel == 'em':
-            df_b = df_b[(df_b['iso_1'] < 0.15)
-                    & (df_b['iso_2'] < 0.2)
-                    & (df_b['leptonveto'] == False)
-                    & (df_b['trg_muonelectron'] == True)]
+            elif channel == 'em':
+                df_b = df_b[
+                        (df_b['iso_1'] < 0.15)
+                        & (df_b['iso_2'] < 0.2)
+                        & (df_b['leptonveto'] == False)
+                        & (df_b['trg_muonelectron'] == True)
+                        ]
+        except ValueError:
+            print 'Channel not in ["tt", "mt", "et", "em"]'
+
+        ## TO SELECT THE SIGNAL SAMPLE ACCORDING TO
+        ## CUTS APPLIED RELATING TO n_jets AND mjj
+        try:
+            if sig == 'powheg':
+                df_b = df_b[
+                        (df_b['n_jets'] < 2)
+                        | ((df_b['n_jets'] >= 2)
+                            & (df_b['mjj'] < 300))
+                        ]
+            elif sig == 'JHU':
+                df_b = df_b[
+                        (df_b['n_jets'] >= 2)
+                        & (df_b['mjj'] > 300))
+                        ]
+        except ValueError:
+            print 'Signal sample not in ["powheg", "JHU"]'
 
         df_b = df_b.drop(cut_feats, axis=1)
         df.append(df_b)
@@ -55,58 +86,89 @@ def load_ntuple(data, tree, branch, channel, cut_feats):
 
     return df
 
-def load_data_ntuple(data, tree, branch, cut_feats):
-    ## THIS FUNCTION IS FOR SAME SIGN DATA (FOR mt, et, em CHANNELS)
+def load_data_ntuple(data, tree, branch, sig, channel, cut_feats):
+    ## THIS FUNCTION IS FOR READING IN SAME SIGN DATA (FOR mt, et, em CHANNELS)
     ## OR ANTIISOLATED (FOR tt CHANNEL) FOR THE QCD ESTIMATION
 
-    iterator = uproot.iterate(data, tree, channel, branches=branch+cut_feats)
+    try:
+        iterator = uproot.iterate(data, tree, branches=branch+cut_feats)
+    except IOError:
+        print 'Tree/Branches not found'
 
     df = []
     for block in iterator:
         df_b = pd.DataFrame(block)
 
-        if channel == 'tt':
-            df_b = df_b[(df_b['pt_1'] > 40)
-                    & ((df_b['mva_olddm_loose_1'] > 0.5)
-                        & (df_b['mva_olddm_medium_1'] < 0.5)
-                        & (df_b['mva_olddm_loose_2'] > 0.5))
-                    | ((df_b['mva_olddm_loose_2'] > 0.5)
-                        & (df_b['mva_olddm_medium_2'] < 0.5)
-                        & (df_b['mva_olddm_loose_1'] > 0.5))
-                    & (df_b['antiele_1'] == True)
-                    & (df_b['antimu_1'] == True)
-                    & (df_b['antiele_2'] == True)
-                    & (df_b['antimu_2'] == True)
-                    & (df_b['leptonveto'] == False)
-                    & (df_b['trg_doubletau'] == True)]
+        try:
+            if channel == 'tt':
+                df_b = df_b[
+                        (df_b['pt_1'] > 40)
+                        & ((df_b['mva_olddm_loose_1'] > 0.5)
+                            & (df_b['mva_olddm_medium_1'] < 0.5)
+                            & (df_b['mva_olddm_loose_2'] > 0.5))
+                        | ((df_b['mva_olddm_loose_2'] > 0.5)
+                            & (df_b['mva_olddm_medium_2'] < 0.5)
+                            & (df_b['mva_olddm_loose_1'] > 0.5))
+                        & (df_b['antiele_1'] == True)
+                        & (df_b['antimu_1'] == True)
+                        & (df_b['antiele_2'] == True)
+                        & (df_b['antimu_2'] == True)
+                        & (df_b['leptonveto'] == False)
+                        & (df_b['trg_doubletau'] == True)
+                        ]
 
-        if channel == 'mt':
-            df_b = df_b[(df_b['iso_1'] < 0.15)
-                    & (df_b['mva_olddm_medium_2'] > 0.5)
-                    & (df_b['antiele_2'] == True)
-                    & (df_b['antimu_2'] == True)
-                    & (df_b['leptonveto'] == False)
-                    & (df_b['pt_2'] > 20)
-                    & ((df_b['trg_singlemuon']*df_b['pt_1'] > 23)
-                        | (df_b['trg_mutaucross']*df_b['pt_1'] < 23))]
-                    & (df_b['os'] == False)
+            if channel == 'mt':
+                df_b = df_b[
+                        (df_b['iso_1'] < 0.15)
+                        & (df_b['mva_olddm_medium_2'] > 0.5)
+                        & (df_b['antiele_2'] == True)
+                        & (df_b['antimu_2'] == True)
+                        & (df_b['leptonveto'] == False)
+                        & (df_b['pt_2'] > 20)
+                        & ((df_b['trg_singlemuon']*df_b['pt_1'] > 23)
+                            | (df_b['trg_mutaucross']*df_b['pt_1'] < 23))
+                        & (df_b['os'] == False)
+                        ]
 
-        if channel == 'et':
-            df_b = df_b[(df_b['iso_1'] < 0.1)
-                    & (df_b['mva_olddm_medium_2'] > 0.5)
-                    & (df_b['antiele_2'] == True)
-                    & (df_b['antimu_2'] == True)
-                    & (df_b['leptonveto'] == False)
-                    & (df_b['pt_2'] > 20)
-                    & (df_b['trg_singleelectron'] == True)]
-                    & (df_b['os'] == False)
+            if channel == 'et':
+                df_b = df_b[
+                        (df_b['iso_1'] < 0.1)
+                        & (df_b['mva_olddm_medium_2'] > 0.5)
+                        & (df_b['antiele_2'] == True)
+                        & (df_b['antimu_2'] == True)
+                        & (df_b['leptonveto'] == False)
+                        & (df_b['pt_2'] > 20)
+                        & (df_b['trg_singleelectron'] == True)
+                        & (df_b['os'] == False)
+                        ]
 
-        if channel == 'em':
-            df_b = df_b[(df_b['iso_1'] < 0.15)
-                    & (df_b['iso_2'] < 0.2)
-                    & (df_b['leptonveto'] == False)
-                    & (df_b['trg_muonelectron'] == True)]
-                    & (df_b['os'] == False)
+            if channel == 'em':
+                df_b = df_b[
+                        (df_b['iso_1'] < 0.15)
+                        & (df_b['iso_2'] < 0.2)
+                        & (df_b['leptonveto'] == False)
+                        & (df_b['trg_muonelectron'] == True)
+                        & (df_b['os'] == False)
+                        ]
+        except ValueError:
+            print 'Channel not in ["tt", "mt", "et", "em"]'
+
+        ## TO SELECT THE SIGNAL SAMPLE ACCORDING TO
+        ## CUTS APPLIED RELATING TO n_jets AND mjj
+        try:
+            if sig == 'powheg':
+                df_b = df_b[
+                        (df_b['n_jets'] < 2)
+                        | ((df_b['n_jets'] >= 2)
+                            & (df_b['mjj'] < 300))
+                        ]
+            elif sig == 'JHU':
+                df_b = df_b[
+                        (df_b['n_jets'] >= 2)
+                        & (df_b['mjj'] > 300))
+                        ]
+        except ValueError:
+            print 'Signal sample not in ["powheg", "JHU"]'
 
         df_b = df_b.drop(cut_feats, axis=1)
         df.append(df_b)
