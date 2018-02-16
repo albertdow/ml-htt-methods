@@ -8,6 +8,7 @@ import pickle
 import argparse
 from scipy import interp
 from root_numpy import array2root
+import json
 # import seaborn as sns
 
 from sklearn.utils import class_weight
@@ -27,8 +28,6 @@ import plot_functions as pf
 import load_functions as lf
 
 # from class_weight import create_class_weight
-# from data_class import Data
-# from data_class import Sample
 
 def create_feature_map(fmap_filename, features):
     outfile = open(fmap_filename, 'w')
@@ -45,76 +44,148 @@ parser.add_argument('--mode', action='store', default='ttsplit',
         help='training procedure (default train_test_split)')
 parser.add_argument('--channel', action='store', default='mt',
         help='channels to train on')
+parser.add_argument('--sig_sample', action='store', default='powheg',
+        help='''ggh signal sample to run on (default powheg)\n
+        choose powheg for n_jets < 2 | (n_jets >= 2 & mjj < 300)\n
+        choose JHU for n_jets >=2 & mjj > 300''')
 
 opt = parser.parse_args()
 
 
 if not opt.skip:
-    print '\nTraining model on {} channel\n'.format(opt.channel)
-    sig_files = lf.load_files('./filelist/{0}/{0}_sig_files.dat'.format(opt.channel))
+    print '\nTraining model on {} channel with {} sig samples\n'.format(opt.channel, opt.sig_sample)
+    sig_files = lf.load_files('./filelist/{0}/{0}_sig_{1}_files.dat'.format(opt.channel, opt.sig_sample))
     bkg_files = lf.load_files('./filelist/{0}/{0}_bkgs_files.dat'.format(opt.channel))
+    data_files = lf.load_files('./filelist/{0}/{0}_data_files.dat'.format(opt.channel))
 
+    # this file contains information about the xsections, lumi and event numbers
+    params_file = json.load(open('Params_2016_smsummer16.json'))
+    lumi = params_file['MuonEG']['lumi']
 
     # cut_features will only be used for preselection
     # and then dropped again
-    cut_features = ['iso_1', 'mva_olddm_medium_2', 'antiele_2', 'antimu_2',
-            'leptonveto', 'trg_singlemuon', 'trg_mutaucross', 'os']
+    if opt.channel == 'tt':
+        cut_features = [
+                'mva_olddm_medium_1', 'mva_olddm_medium_2',
+                'mva_olddm_loose_1', 'mva_olddm_loose_2',
+                'antiele_1', 'antimu_1', 'antiele_2', 'antimu_2',
+                'leptonveto', 'trg_doubletau',
+                'mjj'
+                ]
+
+    elif opt.channel == 'mt':
+        cut_features = [
+                'iso_1',
+                'mva_olddm_medium_2',
+                'antiele_2', 'antimu_2',
+                'leptonveto',
+                'trg_singlemuon', 'trg_mutaucross',
+                'os', 'mjj'
+                ]
+
+    elif opt.channel == 'et':
+        cut_features = [
+                'iso_1',
+                'mva_olddm_medium_2',
+                'antiele_2', 'antimu_2',
+                'leptonveto',
+                'trg_singleelectron',
+                'os', 'mjj'
+                ]
+
+    elif opt.channel == 'em':
+        cut_features = [
+                'iso_1',
+                'iso_2',
+                'leptonveto',
+                'trg_muonelectron',
+                'os', 'mjj'
+                ]
 
     # features to train on
-    features = ['pt_1', 'pt_2', 'eta_1', 'eta_2', 'dphi', 'm_vis',
-            'm_sv', 'met', 'met_dphi_1', 'met_dphi_2', 'pt_tt',
-            'mt_1', 'mt_2', 'mt_lep', 'n_jets', 'n_bjets', 'wt']
+    # apart from 'wt' - this is used for weights
+    # still need to multipy 'wt' by the scaling factor
+    # coming from the xsection
+    features = [
+            'pt_1', 'pt_2', 'eta_1', 'eta_2', 'dphi',
+            'mt_1', 'mt_2', 'mt_lep',
+            'm_vis', 'm_sv', 'pt_tt',
+            'met', 'met_dphi_1', 'met_dphi_2',
+            'n_jets', 'n_bjets',
+            'wt'
+            ]
 
+    # directory of the files (usually /vols/cms)
     path = '/vols/cms/akd116/Offline/output/SM/2018/Feb13/'
 
     ggh = []
     for sig in sig_files:
         print sig
-        sig_tmp = lf.load_ntuple(
+        sig_tmp = lf.load_mc_ntuple(
                 path + sig + '.root',
                 'ntuple',
                 features,
+                opt.sig_sample,
                 opt.channel,
                 cut_features
                 )
+        ## need to multiply event weight by
+        ## (XS * Lumi) / #events
+        xs_tmp = params_file[sig[:-8]]['xs']
+        events_tmp = params_file[sig[:-8]]['evt']
+        sig_tmp['wt'] = sig_tmp['wt'] * (xs_tmp * lumi)/events_tmp
+
         ggh.append(sig_tmp)
 
     ggh = pd.concat(ggh, ignore_index=True)
-    print ggh
-    # print sig_files[0]
-    # ggh_powheg = lf.load_ntuple(
-    #         path + sig_files[0] + '.root',
-    #         'ntuple',
-    #         features,
-    #         cut_features
-    #         )
-    # print sig_files[1]
-    # ggh_JHU_sm = lf.load_ntuple(
-    #         path + sig_files[1] + '.root',
-    #         'ntuple',
-    #         features,
-    #         cut_features
-    #         )
 
 
     # pf.plot_correlation_matrix(
     #         ggh.drop(['wt'], axis=1),
     #         'ggh_correlation_matrix.pdf')
 
-    bkgs = []
+    bkgs_tmp = []
     for bkg in bkg_files:
         print bkg
-        bkg_tmp = lf.load_ntuple(
+        bkg_tmp = lf.load_mc_ntuple(
                 path + bkg + '.root',
                 'ntuple',
                 features,
+                opt.sig_sample,
+                opt.channel,
+                cut_features
+                )
+        ## need to multiply event weight by
+        ## (XS * Lumi) / #events
+        xs_tmp = params_file[bkg[:-8]]['xs']
+        events_tmp = params_file[bkg[:-8]]['evt']
+        bkg_tmp['wt'] = bkg_tmp['wt'] * (xs_tmp * lumi)/events_tmp
+
+        bkgs_tmp.append(bkg_tmp)
+    bkgs = pd.concat(bkgs_tmp, ignore_index=True)
+
+    qcd_tmp = []
+    for data in data_files:
+        print data
+        data_tmp = lf.load_data_ntuple(
+                path + data + '.root',
+                'ntuple',
+                features,
+                opt.sig_sample,
                 opt.channel,
                 cut_features
                 )
 
-        bkgs.append(bkg_tmp)
+        qcd_tmp.append(data_tmp)
+    qcd = pd.concat(qcd_tmp, ignore_index=True)
 
-    bkgs = pd.concat(bkgs, ignore_index=True)
+    # full background DataFrame
+    bkgs = pd.concat([bkgs, qcd], ignore_index=True)
+
+    # for scale_pos_weight
+    n_ratio = bkgs.shape[0]/ggh.shape[0]
+    print n_ratio
+
 
     # pf.plot_correlation_matrix(
     #         bkgs.drop(['wt'], axis=1),
@@ -128,14 +199,14 @@ if not opt.skip:
 
 
     ### TRY USING scale_pos_weight INSTEAD OF CLASS_WEIGHTS
-    # class_weights = class_weight.compute_class_weight(
-    #         'balanced',
-    #         np.unique(np.array(y).ravel()),
-    #         np.array(y).ravel()
-    #         )
+    class_weights = class_weight.compute_class_weight(
+            'balanced',
+            np.unique(np.array(y).ravel()),
+            np.array(y).ravel()
+            )
 
-    # bkgs['wt'] = bkgs['wt'] * class_weights[0]
-    # ggh['wt'] = ggh['wt'] * class_weights[1]
+    bkgs['wt'] = bkgs['wt'] * class_weights[0]
+    ggh['wt'] = ggh['wt'] * class_weights[1]
 
 
 
@@ -378,7 +449,10 @@ if not opt.skip:
         with open('booster.pkl', 'w') as f:
             pickle.dump(bst, f)
 
-    ## USE THE WRAPPER FOR MLGLUE
+############ SKLEARN WRAPPER ###########
+    ## USE THE SKLEARN WRAPPER
+    ## FOR MLGLUE
+
     if opt.mode == 'sklearn_ttsplit':
         X_train,X_test, y_train,y_test,w_train,w_test  = train_test_split(
                 X.drop(['class'], axis=1),
@@ -388,17 +462,27 @@ if not opt.skip:
                 random_state=1234
                 )
 
+        ## COMMENT NEXT FIVE LINES IF
         ## TRY USING scale_pos_weight INSTEAD OF CLASS_WEIGHTS
-        # for i, val in enumerate(y_test):
-        #     if val == 0.0:
-        #         w_test[i] = w_test[i] / class_weights[0]
-        #     elif val == 1.0:
-        #         w_test[i] = w_test[i] / class_weights[1]
+        for i, val in enumerate(y_test):
+            if val == 0.0:
+                w_test[i] = w_test[i] / class_weights[0]
+            elif val == 1.0:
+                w_test[i] = w_test[i] / class_weights[1]
 
-        params = {'objective':'binary:logistic', 'max_depth':4,
-                'learning_rate':0.01, 'silent':1, 'scale_pos_weight':62,
-                'n_estimators':3000, 'gamma':1.0, 'subsample':0.6,
-                'missing':-9999.0, 'nthread':-1, 'seed':1234}
+        params = {
+                'objective':'binary:logistic',
+                'max_depth':7,
+                'learning_rate':0.01,
+                'silent':1,
+                'scale_pos_weight':1,
+                'n_estimators':3000,
+                'gamma':1.0,
+                'subsample':0.7,
+                'missing':-9999.0,
+                'nthread':-1,
+                'seed':1234
+                }
 
         xgb_clf = xgb.XGBClassifier(**params)
 
@@ -526,64 +610,6 @@ if opt.skip:
 
         # pf.plot_output(bst, xg_train, xg_test, y_train, y_test, 'noclassw_output.pdf')
 
-        ggh_file = lf.load_files('ggh_files.txt')
-        bkg_files = lf.load_files('background_files.txt')
-
-        path = '/vols/cms/akd116/Offline/output/SM/2018/Jan26/'
-
-        # cut_features will only be used for preselection
-        # and then dropped again
-        cut_features = ['iso_1', 'mva_olddm_medium_2', 'antiele_2', 'antimu_2',
-                'leptonveto', 'trg_singlemuon', 'trg_mutaucross']
-
-        # features to train on
-        features = ['pt_1', 'pt_2', 'eta_1', 'eta_2', 'dphi', 'm_vis',
-                'met', 'met_dphi_1', 'met_dphi_2', 'pt_tt',
-                'mt_1', 'mt_2', 'mt_lep', 'n_jets', 'n_bjets', 'wt']
-
-
-        print ggh_file[0]
-        ggh = lf.load_ntuple(path + ggh_file[0] + '.root','ntuple', features, cut_features)
-        # pf.plot_correlation_matrix(ggh.drop(['wt'], axis=1), 'ggh_correlation_matrix.pdf')
-
-        bkgs = []
-        for bkg in bkg_files:
-            print bkg
-            bkg_tmp = lf.load_ntuple(path + bkg + '.root','ntuple', features, cut_features)
-            bkgs.append(bkg_tmp)
-        bkgs = pd.concat(bkgs, ignore_index=False)
-        # pf.plot_correlation_matrix(bkgs.drop(['wt'], axis=1), 'bkgs_correlation_matrix.pdf')
-
-        n_ratio = bkgs.shape[0]/ggh.shape[0]
-
-        y_sig = pd.DataFrame(np.ones(ggh.shape[0]))
-        y_bkgs = pd.DataFrame(np.zeros(bkgs.shape[0]))
-        y = pd.concat([y_sig, y_bkgs])
-        y.columns = ['class']
-
-        ### TRY USING scale_pos_weight INSTEAD OF CLASS_WEIGHTS
-
-        # class_weights = class_weight.compute_class_weight('balanced',
-        #                                             np.unique(np.array(y).ravel()),
-        #                                             np.array(y).ravel())
-        # print class_weights
-
-        # bkgs['wt'] = bkgs['wt'] * class_weights[0]
-        # ggh['wt'] = ggh['wt'] * class_weights[1]
-
-        X = pd.concat([ggh, bkgs])
-        X['class'] = y.values
-
-        w = np.array(X['wt'])
-        X = X.drop(['wt', 'class'], axis=1).reset_index(drop=True)
-
-        xg_full = xgb.DMatrix(X.drop(['class'], axis=1), label=y, missing=-9999, weight=w)
-
-        y_predicted = bst.predict(xg_full)
-        y_predicted.dtype = [('y', np.float64)]
-
-        array2root(y_predicted, './tmp/w_test-prediction.root', 'BDToutput')
-
 
 
     if opt.mode == 'sklearn_ttsplit':
@@ -591,5 +617,3 @@ if opt.skip:
             model = pickle.load(f)
 
         features = X_test.columns
-        create_feature_map('xgb.fmap', features)
-
