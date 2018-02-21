@@ -17,15 +17,19 @@ def plot_signal_background(data1, data2, column,
                         channel, sig_sample,
                         bins=10, **kwargs):
 
+    ## THIS FUNCTION IS FOR PLOTTING SIGNAL VS
+    ## BACKGROUND FOR A SPECIFIC VARIABLE/COLUMN
+
+
     if 'alpha' not in kwargs:
         kwargs['alpha'] = 0.5
 
-    df1 = data1[column]
-    df2 = data2[column]
+    df1 = np.log(data1[column])
+    df2 = np.log(data2[column])
 
     fig, ax = plt.subplots()
-    df1=df1.sample(4000, random_state=1234)
-    df2=df2.sample(4000, random_state=1234)
+    # df1=df1.sample(4000, random_state=1234)
+    # df2=df2.sample(4000, random_state=1234)
     low = min(df1.min(), df2.min())
     high = max(df1.max(), df2.max())
 
@@ -42,6 +46,9 @@ def plot_signal_background(data1, data2, column,
 
 
 # def plot_roc_cutbased(data, column):
+
+#     ## THIS FUNCTION PLOTS THE ROC CURVE FOR A
+#     ## CUT-BASED "CLASSIFIER" LIKE m_sv
 
 #     var = data[column]
 #     fp, tp, fn, tn = []
@@ -132,6 +139,7 @@ def plot_confusion_matrix(y_test, y_pred, w_test, classes,
 
     return None
 
+
 def plot_features(booster, imp_type, figname):
 
     fig = plt.figure(figsize=(12,7))
@@ -148,6 +156,7 @@ def plot_features(booster, imp_type, figname):
     print 'Feature importance saved as {}'.format(figname)
 
     return None
+
 
 def plot_correlation_matrix(data, figname, **kwds):
 
@@ -173,6 +182,7 @@ def plot_correlation_matrix(data, figname, **kwds):
     fig.tight_layout()
     fig.savefig(figname)
     print 'Correlation matrix saved as {}'.format(figname)
+
 
 def plot_output(booster, train, test, y_train, y_test, figname, bins=20, **kwds):
 

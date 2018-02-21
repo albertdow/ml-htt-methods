@@ -47,9 +47,9 @@ opt = parser.parse_args()
 
 if not opt.skip:
     print '\nTraining model on {} channel with {} sig samples\n'.format(opt.channel, opt.sig_sample)
-    sig_files = lf.load_files('./filelist/{0}/{0}_sig_{1}_files.dat'.format(opt.channel, opt.sig_sample))
-    bkg_files = lf.load_files('./filelist/{0}/{0}_bkgs_files.dat'.format(opt.channel))
-    data_files = lf.load_files('./filelist/{0}/{0}_data_files.dat'.format(opt.channel))
+    sig_files = lf.load_files('./filelist/sig_{}_files.dat'.format(opt.sig_sample))
+    bkg_files = lf.load_files('./filelist/bkgs_files.dat')
+    data_files = lf.load_files('./filelist/{0}_data_files.dat'.format(opt.channel))
 
     # this file contains information about the xsections, lumi and event numbers
     params_file = json.load(open('Params_2016_smsummer16.json'))
@@ -106,17 +106,19 @@ if not opt.skip:
             'met', 'met_dphi_1', 'met_dphi_2',
             'n_jets', 'n_bjets',
             'wt',
-            # 'pzeta', 'pt_vis'
+            'pt_vis',
             ]
+    if opt.channel == 'em':
+        features.append('pzeta')
 
-    # directory of the files (usually /vols/cms)
-    path = '/vols/cms/akd116/Offline/output/SM/2018/Feb13/'
+    # directory of the files (usually /vols/cms/)
+    path = '/vols/cms/akd116/Offline/output/SM/2018/Feb21/'
 
     ggh = []
     for sig in sig_files:
         print sig
         sig_tmp = lf.load_mc_ntuple(
-                path + sig + '.root',
+                path + sig + '_{}_2016.root'.format(opt.channel),
                 'ntuple',
                 features,
                 opt.sig_sample,
@@ -125,14 +127,13 @@ if not opt.skip:
                 )
         ## need to multiply event weight by
         ## (XS * Lumi) / #events
-        xs_tmp = params_file[sig[:-8]]['xs']
-        events_tmp = params_file[sig[:-8]]['evt']
+        xs_tmp = params_file[sig]['xs']
+        events_tmp = params_file[sig]['evt']
         sig_tmp['wt'] = sig_tmp['wt'] * (xs_tmp * lumi)/events_tmp
 
         ggh.append(sig_tmp)
 
     ggh = pd.concat(ggh, ignore_index=True)
-    print ggh
 
 
     # pf.plot_correlation_matrix(
@@ -143,7 +144,7 @@ if not opt.skip:
     for bkg in bkg_files:
         print bkg
         bkg_tmp = lf.load_mc_ntuple(
-                path + bkg + '.root',
+                path + bkg + '_{}_2016.root'.format(opt.channel),
                 'ntuple',
                 features,
                 opt.sig_sample,
@@ -152,8 +153,8 @@ if not opt.skip:
                 )
         ## need to multiply event weight by
         ## (XS * Lumi) / #events
-        xs_tmp = params_file[bkg[:-8]]['xs']
-        events_tmp = params_file[bkg[:-8]]['evt']
+        xs_tmp = params_file[bkg]['xs']
+        events_tmp = params_file[bkg]['evt']
         bkg_tmp['wt'] = bkg_tmp['wt'] * (xs_tmp * lumi)/events_tmp
 
         bkgs_tmp.append(bkg_tmp)
@@ -163,7 +164,7 @@ if not opt.skip:
     for data in data_files:
         print data
         data_tmp = lf.load_data_ntuple(
-                path + data + '.root',
+                path + data + '_{}_2016.root'.format(opt.channel),
                 'ntuple',
                 features,
                 opt.sig_sample,
@@ -176,13 +177,12 @@ if not opt.skip:
 
     # full background DataFrame
     bkgs = pd.concat([bkgs, qcd], ignore_index=True)
-    print bkgs
 
-    pf.plot_signal_background(
-            ggh, bkgs, 'm_sv',
-            opt.channel, opt.sig_sample,
-            bins=50
-            )
+    # pf.plot_signal_background(
+    #         ggh, bkgs, 'm_sv',
+    #         opt.channel, opt.sig_sample,
+    #         bins=100
+    #         )
 
 
     # pf.plot_correlation_matrix(

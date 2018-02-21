@@ -26,7 +26,6 @@ def load_mc_ntuple(data, tree, branch, sig, channel, cut_feats):
                     & (df_b['antimu_2'] == True)
                     & (df_b['leptonveto'] == False)
                     & (df_b['trg_doubletau'] == True)
-                    & (df_b['m_sv'] > 0) ## APPLYING THIS COS SOME MISSING ATM
                     ]
 
         elif channel == 'mt':
@@ -40,7 +39,6 @@ def load_mc_ntuple(data, tree, branch, sig, channel, cut_feats):
                     & (df_b['pt_2'] > 20)
                     & ((df_b['trg_singlemuon']*df_b['pt_1'] > 23)
                         | (df_b['trg_mutaucross']*df_b['pt_1'] < 23))
-                    & (df_b['m_sv'] > 0)
                     ]
 
         elif channel == 'et':
@@ -53,17 +51,15 @@ def load_mc_ntuple(data, tree, branch, sig, channel, cut_feats):
                     & (df_b['leptonveto'] == False)
                     & (df_b['pt_2'] > 20)
                     & (df_b['trg_singleelectron'] == True)
-                    & (df_b['m_sv'] > 0)
                     ]
 
         elif channel == 'em':
             df_b = df_b[
                     (df_b['iso_1'] < 0.15)
                     & (df_b['iso_2'] < 0.2)
-                    # & (df_b['pzeta'] > -50)
+                    & (df_b['pzeta'] > -50)
                     & (df_b['leptonveto'] == False)
                     & (df_b['trg_muonelectron'] == True)
-                    & (df_b['m_sv'] > 0)
                     ]
         else:
             assert ValueError('Channel not in ["tt", "mt", "et", "em"]')
@@ -83,6 +79,8 @@ def load_mc_ntuple(data, tree, branch, sig, channel, cut_feats):
                     ]
         else:
             assert ValueError('Signal sample not in ["powheg", "JHU"]')
+
+        df_b = df_b[(df_b['m_sv'] > 0)] ## SOME m_sv ARE MISSING
 
         df_b = df_b.drop(cut_feats, axis=1)
         df.append(df_b)
@@ -155,7 +153,7 @@ def load_data_ntuple(data, tree, branch, sig, channel, cut_feats):
             df_b = df_b[
                     (df_b['iso_1'] < 0.15)
                     & (df_b['iso_2'] < 0.2)
-                    # & (df_b['pzeta'] > -50)
+                    & (df_b['pzeta'] > -50)
                     & (df_b['leptonveto'] == False)
                     & (df_b['trg_muonelectron'] == True)
                     & (df_b['os'] == False)
@@ -180,6 +178,8 @@ def load_data_ntuple(data, tree, branch, sig, channel, cut_feats):
                         ]
         except ValueError:
             print 'Signal sample not in ["powheg", "JHU"]'
+
+        df_b = df_b[(df_b['m_sv'] > 0)] ## SOME m_sv ARE MISSING
 
         df_b = df_b.drop(cut_feats, axis=1)
         df.append(df_b)

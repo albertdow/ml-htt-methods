@@ -40,40 +40,40 @@ def fit_ttsplit(X, channel, sig_sample):
 
     # if channel == 'tt':
 
-        # if sig_sample == 'powheg':
-    params = {
-            'objective':'binary:logistic',
-            'max_depth':2,
-            'min_child_weight':2,
-            'learning_rate':0.1,
-            'silent':1,
-            'scale_pos_weight':ratio,
-            'n_estimators':2000,
-            'gamma':1.0,
-            'subsample':0.7,
-            'colsample_bytree':0.8,
-            'max_delta_step':1,
-            'nthread':-1,
-            'seed':1234
-            }
+    if sig_sample == 'powheg':
+        params = {
+                'objective':'binary:logistic',
+                'max_depth':2,
+                'min_child_weight':1,
+                'learning_rate':0.01,
+                'silent':1,
+                'scale_pos_weight':ratio,
+                'n_estimators':2000,
+                'gamma':1.0,
+                'subsample':0.7,
+                'colsample_bytree':0.8,
+                'max_delta_step':1,
+                'nthread':-1,
+                'seed':1234
+                }
 
 
-        # if sig_sample == 'JHU':
-        #     params = {
-        #             'objective':'binary:logistic',
-        #             'max_depth':4,
-        #             'min_child_weight':2,
-        #             'learning_rate':0.1,
-        #             'silent':1,
-        #             'scale_pos_weight':ratio,
-        #             'n_estimators':2000,
-        #             'gamma':0.1,
-        #             'subsample':0.8,
-        #             'colsample_bytree':0.8,
-        #             'max_delta_step':1,
-        #             'nthread':-1,
-        #             'seed':1234
-        #             }
+    if sig_sample == 'JHU':
+        params = {
+                'objective':'binary:logistic',
+                'max_depth':4,
+                'min_child_weight':2,
+                'learning_rate':0.1,
+                'silent':1,
+                'scale_pos_weight':ratio,
+                'n_estimators':2000,
+                'gamma':0.1,
+                'subsample':0.8,
+                'colsample_bytree':0.8,
+                'max_delta_step':1,
+                'nthread':-1,
+                'seed':1234
+                }
 
     xgb_clf = xgb.XGBClassifier(**params)
 
