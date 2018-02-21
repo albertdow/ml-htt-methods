@@ -29,11 +29,11 @@ import load_functions as lf
 
 # from class_weight import create_class_weight
 
-def create_feature_map(fmap_filename, features):
-    outfile = open(fmap_filename, 'w')
-    for i, feat in enumerate(features):
-        outfile.write('{}\t{}\tq\n'.format(i, feat))
-    outfile.close()
+# def create_feature_map(fmap_filename, features):
+#     outfile = open(fmap_filename, 'w')
+#     for i, feat in enumerate(features):
+#         outfile.write('{}\t{}\tq\n'.format(i, feat))
+#     outfile.close()
 
 
 parser = argparse.ArgumentParser()
@@ -184,7 +184,6 @@ if not opt.skip:
 
     # for scale_pos_weight
     n_ratio = bkgs.shape[0]/ggh.shape[0]
-    print n_ratio
 
 
     # pf.plot_correlation_matrix(
@@ -198,15 +197,16 @@ if not opt.skip:
 
 
 
+    ### COMMENT OUT IF WANNA
     ### TRY USING scale_pos_weight INSTEAD OF CLASS_WEIGHTS
-    class_weights = class_weight.compute_class_weight(
-            'balanced',
-            np.unique(np.array(y).ravel()),
-            np.array(y).ravel()
-            )
+    # class_weights = class_weight.compute_class_weight(
+    #         'balanced',
+    #         np.unique(np.array(y).ravel()),
+    #         np.array(y).ravel()
+    #         )
 
-    bkgs['wt'] = bkgs['wt'] * class_weights[0]
-    ggh['wt'] = ggh['wt'] * class_weights[1]
+    # bkgs['wt'] = bkgs['wt'] * class_weights[0]
+    # ggh['wt'] = ggh['wt'] * class_weights[1]
 
 
 
@@ -214,7 +214,7 @@ if not opt.skip:
     X['class'] = y.values
 
     w = np.array(X['wt'])
-    X = X.drop(['wt'], axis=1).reset_index(drop=True)
+    # X = X.drop(['wt'], axis=1).reset_index(drop=True)
 
     ##
 
@@ -454,35 +454,80 @@ if not opt.skip:
     ## FOR MLGLUE
 
     if opt.mode == 'sklearn_ttsplit':
+        # X_train,X_test, y_train,y_test,w_train,w_test  = train_test_split(
+        #         X.drop(['class'], axis=1),
+        #         X['class'],
+        #         w,
+        #         test_size=0.33,
+        #         random_state=1234
+        #         )
         X_train,X_test, y_train,y_test,w_train,w_test  = train_test_split(
-                X.drop(['class'], axis=1),
+                X,
                 X['class'],
                 w,
-                test_size=0.5,
+                test_size=0.33,
                 random_state=1234
                 )
 
-        ## COMMENT NEXT FIVE LINES IF
+        ## COMMENT OUT NEXT FIVE LINES IF
         ## TRY USING scale_pos_weight INSTEAD OF CLASS_WEIGHTS
-        for i, val in enumerate(y_test):
-            if val == 0.0:
-                w_test[i] = w_test[i] / class_weights[0]
-            elif val == 1.0:
-                w_test[i] = w_test[i] / class_weights[1]
+        # for i, val in enumerate(y_test):
+        #     if val == 0.0:
+        #         w_test[i] = w_test[i] / class_weights[0]
+        #     elif val == 1.0:
+        #         w_test[i] = w_test[i] / class_weights[1]
 
-        params = {
-                'objective':'binary:logistic',
-                'max_depth':7,
-                'learning_rate':0.01,
-                'silent':1,
-                'scale_pos_weight':1,
-                'n_estimators':3000,
-                'gamma':1.0,
-                'subsample':0.7,
-                'missing':-9999.0,
-                'nthread':-1,
-                'seed':1234
-                }
+        ## SOME TESTS WITH WEIGHTS
+        # w_train *= (sum(w) / sum(w_train))
+        # w_test *= (sum(w) / sum(w_test))
+        # print w_train[y_train == 1]
+        # print w_train[y_train == 0]
+
+        sum_wpos = sum(w_train[y_train == 1])
+        sum_wneg = sum(w_train[y_train == 0])
+        ratio = sum_wneg / sum_wpos
+        print sum_wneg/sum_wpos
+
+        X_train = X_train.drop(['wt', 'class'], axis=1).reset_index(drop=True)
+        X_test = X_test.drop(['wt', 'class'], axis=1).reset_index(drop=True)
+
+
+        if opt.sig_sample == 'powheg':
+            params = {
+                    'objective':'binary:logistic',
+                    'max_depth':2,
+                    'min_child_weight':2,
+                    'learning_rate':0.1,
+                    'silent':1,
+                    'scale_pos_weight':ratio,
+                    'n_estimators':2000,
+                    'gamma':1.0,
+                    'subsample':0.7,
+                    'colsample_bytree':0.8,
+                    'max_delta_step':1,
+                    # 'missing':-9999.0,
+                    'nthread':-1,
+                    'seed':1234
+                    }
+
+
+        if opt.sig_sample == 'JHU':
+            params = {
+                    'objective':'binary:logistic',
+                    'max_depth':4,
+                    'min_child_weight':2,
+                    'learning_rate':0.1,
+                    'silent':1,
+                    'scale_pos_weight':ratio,
+                    'n_estimators':2000,
+                    'gamma':0.1,
+                    'subsample':0.8,
+                    'colsample_bytree':0.8,
+                    'max_delta_step':1,
+                    # 'missing':-9999.0,
+                    'nthread':-1,
+                    'seed':1234
+                    }
 
         xgb_clf = xgb.XGBClassifier(**params)
 
@@ -490,9 +535,9 @@ if not opt.skip:
                 X_train,
                 y_train,
                 sample_weight = w_train,
-                early_stopping_rounds=70,
+                early_stopping_rounds=50,
                 eval_set=[(X_train, y_train), (X_test, y_test)],
-                eval_metric = 'logloss',
+                eval_metric = ['auc'],
                 verbose=True
                 )
 
@@ -525,7 +570,11 @@ if not opt.skip:
                 missing=-9999,
                 weight=w_test
                 )
+
         pf.plot_output(xgb_clf.booster(), xg_train, xg_test, y_train, y_test, 'sklearn_output.pdf')
+
+        pf.plot_features(xgb_clf.booster(), 'weight', 'sklearn_features_weight.pdf')
+        pf.plot_features(xgb_clf.booster(), 'gain', 'sklearn_features_gain.pdf')
 
         ## SAVE FOR SKIP
 
@@ -552,15 +601,15 @@ if not opt.skip:
 
 
 if opt.skip:
-    if opt.mode == 'ttsplit':
+    if opt.mode == 'sklearn_ttsplit':
         with open('fpr.pkl', 'r') as f:
             fpr = pickle.load(f)
         with open('tpr.pkl', 'r') as f:
             tpr = pickle.load(f)
         with open('auc.pkl', 'r') as f:
             auc = pickle.load(f)
-        with open('pred.pkl', 'r') as f:
-            prediction = pickle.load(f)
+        # with open('pred.pkl', 'r') as f:
+        #     prediction = pickle.load(f)
         with open('X_train.pkl', 'r') as f:
             X_train = pickle.load(f)
         with open('y_train.pkl', 'r') as f:
@@ -573,8 +622,10 @@ if opt.skip:
             w_test = pickle.load(f)
         with open('w_train.pkl', 'r') as f:
             w_train = pickle.load(f)
-        with open('booster.pkl', 'r') as f:
-            bst = pickle.load(f)
+        # with open('booster.pkl', 'r') as f:
+        #     bst = pickle.load(f)
+        with open('skl_xgb.pkl', 'r') as f:
+            xgb_clf = pickle.load(f)
 
         # print prediction
         # print prediction[y_test>0.5]
@@ -613,7 +664,15 @@ if opt.skip:
 
 
     if opt.mode == 'sklearn_ttsplit':
-        with open('skl_xgb.pkl', 'r') as f:
-            model = pickle.load(f)
+        # with open('skl_xgb.pkl', 'r') as f:
+        #     model = pickle.load(f)
 
-        features = X_test.columns
+        # features = X_test.columns
+        y_pred = xgb_clf.predict(X_test)
+
+        pf.plot_confusion_matrix(y_test, y_pred, w_test, classes=['background', 'signal'],
+                        figname='sklearn_tt_non-normalised_weights_cm.pdf', normalise=False)
+
+        pf.plot_confusion_matrix(y_test, y_pred, w_test, classes=['background', 'signal'],
+                        figname='sklearn_tt_normalised_weights_cm.pdf', normalise=True)
+
