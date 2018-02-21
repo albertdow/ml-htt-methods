@@ -13,49 +13,52 @@ import xgboost as xgb
 from sklearn.metrics import confusion_matrix
 
 
-def plot_signal_background(data1, data2, column=None, grid=True,
-                      xlabelsize=None, xrot=None, ylabelsize=None,
-                      yrot=None, ax=None, sharex=False,
-                      sharey=False, figsize=None,
-                      layout=None, bins=10, **kwds):
+def plot_signal_background(data1, data2, column,
+                        channel, sig_sample,
+                        bins=10, **kwargs):
+
+    if 'alpha' not in kwargs:
+        kwargs['alpha'] = 0.5
+
+    df1 = data1[column]
+    df2 = data2[column]
+
+    fig, ax = plt.subplots()
+    df1=df1.sample(4000, random_state=1234)
+    df2=df2.sample(4000, random_state=1234)
+    low = min(df1.min(), df2.min())
+    high = max(df1.max(), df2.max())
+
+    ax.hist(df1, bins=bins, range=(low,high), **kwargs)
+    ax.hist(df2, bins=bins, range=(low,high), **kwargs)
+
+    ax.set_yscale('log')
+
+    fig.savefig('{}_{}_{}.pdf'.format(column, channel, sig_sample))
+    print 'Signal/Background plot of {} saved'.format(column)
 
 
-    if 'alpha' not in kwds:
-        kwds['alpha'] = 0.5
+    return None
 
-    if column is not None:
-        if not isinstance(column, (list, np.ndarray, Index)):
-            column = [column]
-        data1 = data1[column]
-        data2 = data2[column]
 
-    data1 = data1._get_numeric_data()
-    data2 = data2._get_numeric_data()
-    naxes = len(data1.columns)
+# def plot_roc_cutbased(data, column):
 
-    fig, axes = plotting._subplots(naxes=naxes, ax=ax, squeeze=False,
-                                   sharex=sharex,
-                                   sharey=sharey,
-                                   figsize=figsize,
-                                   layout=layout)
-    _axes = plotting._flatten(axes)
+#     var = data[column]
+#     fp, tp, fn, tn = []
+#     fpr, tpr = []
 
-    for i, col in enumerate(com._try_sort(data1.columns)):
-        ax = _axes[i]
-        low = min(data1[col].min(), data2[col].min())
-        high = max(data1[col].max(), data2[col].max())
-        ax.hist(data1[col].dropna().values,
-                bins=bins, range=(low,high), **kwds)
-        ax.hist(data2[col].dropna().values,
-                bins=bins, range=(low,high), **kwds)
-        ax.set_title(col)
-        ax.grid(grid)
+#     fig, ax = plt.subplots()
+#     thresholds = np.linspace(1,125, 101)
 
-    plotting._set_ticks_props(axes, xlabelsize=xlabelsize, xrot=xrot,
-                              ylabelsize=ylabelsize, yrot=yrot)
-    fig.subplots_adjust(wspace=0.3, hspace=0.7)
+#     roc = np.zeros((101,2))
 
-    return axes
+#     for i in np.arange(101):
+#         t = thresholds[i]
+
+#         tp = np.logical_and(var > var + t, data['class']==1).sum()
+#     return None
+
+
 
 
 def plot_roc_curve(fpr, tpr, auc, figname):
@@ -94,7 +97,8 @@ def plot_scatter_matrix(X, figname):
     return None
 
 
-def plot_confusion_matrix(y_test, y_pred, w_test, classes, figname, normalise=False, cmap=plt.cm.Blues):
+def plot_confusion_matrix(y_test, y_pred, w_test, classes,
+                    figname, normalise=False, cmap=plt.cm.Blues):
 
     cm = confusion_matrix(y_test, y_pred, sample_weight=w_test)
     if normalise:
@@ -215,3 +219,4 @@ def plot_output(booster, train, test, y_train, y_test, figname, bins=20, **kwds)
     print 'BDT score saved as {}'.format(figname)
 
     return None
+
