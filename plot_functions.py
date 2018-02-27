@@ -45,25 +45,68 @@ def plot_signal_background(data1, data2, column,
     return None
 
 
-# def plot_roc_cutbased(data, column):
+def plot_roc_cutbased(data1, data2, column,
+        channel, sig_sample):
 
-#     ## THIS FUNCTION PLOTS THE ROC CURVE FOR A
-#     ## CUT-BASED "CLASSIFIER" LIKE m_sv
+    ## THIS FUNCTION PLOTS THE ROC CURVE FOR A
+    ## CUT-BASED "CLASSIFIER" LIKE m_sv
 
-#     var = data[column]
-#     fp, tp, fn, tn = []
-#     fpr, tpr = []
+    sig = data1[column]
+    bkg = data2[column]
 
-#     fig, ax = plt.subplots()
-#     thresholds = np.linspace(1,125, 101)
+    sig_hist, sig_bin_edges = np.histogram(
+            sig, bins=200,
+            range=(0,400),
+            weights=data1['wt']
+            )
+    bkg_hist, bkg_bin_edges = np.histogram(
+            bkg, bins=200,
+            range=(0, 400),
+            weights=data2['wt']
+            )
 
-#     roc = np.zeros((101,2))
+    sig_df = pd.DataFrame(
+            data={
+                'signal':sig_hist,
+                'bin_edges':sig_bin_edges[:-1]
+                })
+    bkg_df = pd.DataFrame(
+            data={
+                'background':bkg_hist,
+                'bin_edges':bkg_bin_edges[:-1]
+                })
 
-#     for i in np.arange(101):
-#         t = thresholds[i]
+    df = pd.merge(sig_df, bkg_df, on='bin_edges')
+    print df
 
-#         tp = np.logical_and(var > var + t, data['class']==1).sum()
-#     return None
+    for col in ['signal', 'background']:
+        df[col] = df[col] / df[col].sum()
+    print df
+
+    df.sort_values(by='signal', ascending=False, inplace=True)
+    df.reset_index(drop=True, inplace=True)
+
+    sig_bin_max = df['bin_edges'][0]
+
+    df['dist'] = np.abs(sig_bin_max - df['bin_edges'])
+    df.sort_values(by='dist', ascending=True, inplace=True)
+    df.reset_index(drop=True, inplace=True)
+    print df
+
+    df_cum = df.cumsum(axis=0)
+    print df_cum
+
+    df_zero = pd.DataFrame({'bin_edges':np.nan,'signal':0.0, 'background':0.0}, index=[0])
+    df_cum = pd.concat([df_zero, df_cum])
+
+    fig, ax = plt.subplots()
+    ax.plot(df_cum['background'], df_cum['signal'])
+
+    fig.savefig('roc_{}_{}_{}.pdf'.format(column, channel, sig_sample))
+    print 'ROC curve of {} saved'.format(column)
+
+
+    return None
 
 
 
@@ -230,3 +273,51 @@ def plot_output(booster, train, test, y_train, y_test, figname, bins=20, **kwds)
 
     return None
 
+
+
+## FOR GBC
+def compare_train_test(clf, X_train, y_train, X_test, y_test, figname, bins=30):
+    decisions = []
+    for X,y in ((X_train, y_train), (X_test, y_test)):
+        d1 = clf.decision_function(X.as_matrix()[y>0.5]).ravel()
+        d2 = clf.decision_function(X.as_matrix()[y<0.5]).ravel()
+        decisions += [d1, d2]
+
+    low = min(np.min(d) for d in decisions)
+    high = max(np.max(d) for d in decisions)
+    low_high = (low,high)
+
+    fig, ax = plt.subplots()
+    ax.hist(decisions[0],
+             color='r', alpha=0.5, range=low_high, bins=bins,
+             histtype='stepfilled', normed=True,
+             label='S (train)')
+    ax.hist(decisions[1],
+             color='b', alpha=0.5, range=low_high, bins=bins,
+             histtype='stepfilled', normed=True,
+             label='B (train)')
+
+    hist, bins = np.histogram(decisions[2],
+                              bins=bins, range=low_high, normed=True)
+    scale = len(decisions[2]) / sum(hist)
+    err = np.sqrt(hist * scale) / scale
+
+    width = (bins[1] - bins[0])
+    center = (bins[:-1] + bins[1:]) / 2
+    ax.errorbar(center, hist, yerr=err, fmt='o', c='r', label='S (test)')
+
+    hist, bins = np.histogram(decisions[3],
+                              bins=bins, range=low_high, normed=True)
+    scale = len(decisions[2]) / sum(hist)
+    err = np.sqrt(hist * scale) / scale
+
+    ax.errorbar(center, hist, yerr=err, fmt='o', c='b', label='B (test)')
+
+    ax.set_xlabel("BDT output")
+    ax.set_ylabel("Arbitrary units")
+    ax.legend(loc='best')
+
+    fig.savefig(figname)
+    print 'BDT score saved as {}'.format(figname)
+
+    return None
