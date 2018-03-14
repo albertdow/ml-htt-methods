@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import pickle
 import plot_functions as pf
 from scipy import interp
+from root_numpy import array2root
 
 from sklearn.utils import class_weight
 from sklearn.metrics import classification_report
@@ -47,7 +48,7 @@ def fit_ttsplit(X, channel, sig_sample):
     if sig_sample == 'powheg':
         params = {
                 'objective':'binary:logistic',
-                'max_depth':2,
+                'max_depth':3,
                 'min_child_weight':1,
                 'learning_rate':0.01,
                 'silent':1,
@@ -65,7 +66,7 @@ def fit_ttsplit(X, channel, sig_sample):
     if sig_sample == 'JHU':
         params = {
                 'objective':'binary:logistic',
-                'max_depth':9,
+                'max_depth':7,
                 'min_child_weight':1,
                 'learning_rate':0.01,
                 'silent':1,
@@ -113,6 +114,29 @@ def fit_ttsplit(X, channel, sig_sample):
     ## 15% of highest probablilty output
 
     # Make predictions for s and b
+
+    ## SAVE FOR SKIP
+
+    # with open('fpr.pkl', 'w') as f:
+    #     pickle.dump(fpr, f)
+    # with open('tpr.pkl', 'w') as f:
+    #     pickle.dump(tpr, f)
+    # with open('auc.pkl', 'w') as f:
+    #     pickle.dump(auc, f)
+    # with open('X_train.pkl', 'w') as f:
+    #     pickle.dump(X_train, f)
+    # with open('y_train.pkl', 'w') as f:
+    #     pickle.dump(y_train, f)
+    # with open('X_test.pkl', 'w') as f:
+    #     pickle.dump(X_test, f)
+    # with open('y_test.pkl', 'w') as f:
+    #     pickle.dump(y_test, f)
+    # with open('w_test.pkl', 'w') as f:
+    #     pickle.dump(w_test, f)
+    # with open('w_train.pkl', 'w') as f:
+    #     pickle.dump(w_train, f)
+    with open('skl_{}_{}_xgb.pkl'.format(channel, sig_sample), 'w') as f:
+        pickle.dump(xgb_clf, f)
 
     auc = roc_auc_score(y_test, y_pred[:,1])
     print auc
@@ -166,29 +190,6 @@ def fit_ttsplit(X, channel, sig_sample):
             classes=['background', 'signal'],
             figname='{}_{}_normalised_weights_cm.pdf'.format(channel, sig_sample),
             normalise=True)
-
-    ## SAVE FOR SKIP
-
-    # with open('fpr.pkl', 'w') as f:
-    #     pickle.dump(fpr, f)
-    # with open('tpr.pkl', 'w') as f:
-    #     pickle.dump(tpr, f)
-    # with open('auc.pkl', 'w') as f:
-    #     pickle.dump(auc, f)
-    # with open('X_train.pkl', 'w') as f:
-    #     pickle.dump(X_train, f)
-    # with open('y_train.pkl', 'w') as f:
-    #     pickle.dump(y_train, f)
-    # with open('X_test.pkl', 'w') as f:
-    #     pickle.dump(X_test, f)
-    # with open('y_test.pkl', 'w') as f:
-    #     pickle.dump(y_test, f)
-    # with open('w_test.pkl', 'w') as f:
-    #     pickle.dump(w_test, f)
-    # with open('w_train.pkl', 'w') as f:
-    #     pickle.dump(w_train, f)
-    with open('skl_{}_{}_xgb.pkl'.format(channel, sig_sample), 'w') as f:
-        pickle.dump(xgb_clf, f)
 
     return None
 
@@ -466,4 +467,25 @@ def fit_gbc_ttsplit(X, channel, sig_sample):
 
     return None
 
+
+
+def write_score(data, model, channel):
+
+    gb = data.groupby('process')
+    df_dict = {x: gb.get_group(x) for x in gb.groups}
+
+    score = []
+    for key, value in df_dict.iteritems():
+        print 'Writing into {}_{}_2016.root'.format(key, channel)
+        value = value.drop(['process'], axis=1)
+        score = model.predict_proba(value)[:,1]
+        score.dtype = [('bdt_score_Mar14', np.float32)]
+        array2root(
+                score,
+                '/vols/cms/akd116/Offline/output/SM/2018/Feb23/' + key + '_' + channel + '_2016.root',
+                'ntuple',
+                mode = 'update'
+                )
+
+    return None
 
