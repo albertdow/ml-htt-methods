@@ -127,7 +127,6 @@ def load_data_ntuple(data, tree, branch, sig, channel, cut_feats, apply_cuts):
                         & (df_b['antimu_2'] == True)
                         & (df_b['leptonveto'] == False)
                         & (df_b['trg_doubletau'] == True)
-                        & (df_b['m_sv'] > 0)
                         ]
 
             elif channel == 'mt':
@@ -142,7 +141,6 @@ def load_data_ntuple(data, tree, branch, sig, channel, cut_feats, apply_cuts):
                         & ((df_b['trg_singlemuon']*df_b['pt_1'] > 23)
                             | (df_b['trg_mutaucross']*df_b['pt_1'] < 23))
                         & (df_b['os'] == False)
-                        & (df_b['m_sv'] > 0)
                         ]
 
             elif channel == 'et':
@@ -156,7 +154,6 @@ def load_data_ntuple(data, tree, branch, sig, channel, cut_feats, apply_cuts):
                         & (df_b['pt_2'] > 20)
                         & (df_b['trg_singleelectron'] == True)
                         & (df_b['os'] == False)
-                        & (df_b['m_sv'] > 0)
                         ]
 
             elif channel == 'em':
@@ -167,7 +164,6 @@ def load_data_ntuple(data, tree, branch, sig, channel, cut_feats, apply_cuts):
                         & (df_b['leptonveto'] == False)
                         & (df_b['trg_muonelectron'] == True)
                         & (df_b['os'] == False)
-                        & (df_b['m_sv'] > 0)
                         ]
             else:
                 assert ValueError('Channel not in ["tt", "mt", "et", "em"]')
