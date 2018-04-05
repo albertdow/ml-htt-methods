@@ -1,3 +1,6 @@
+# Usage:
+#     python application.py --sys --sig_sample powheg --mode xgb_multi --channel tt
+
 import random
 import uproot
 import ROOT
@@ -14,6 +17,7 @@ from pandas.core.groupby import GroupBy
 # import seaborn as sns
 from mlglue.tree import tree_to_tmva, BDTxgboost, BDTsklearn
 import xgboost2tmva
+import gc
 
 from sklearn.utils import class_weight
 from sklearn.metrics import classification_report
@@ -58,7 +62,7 @@ with open('multi_{}_{}_xgb.pkl'.format(opt.channel, opt.sig_sample), 'r') as f:
 
 
 print '\nPredicting score on {} channel with {} sig samples\n'.format(opt.channel, opt.sig_sample)
-sig_files = lf.load_files('./filelist/sig_{}_files.dat'.format(opt.sig_sample))
+sig_files = lf.load_files('./filelist/sig_files.dat')
 bkg_files = lf.load_files('./filelist/full_mc_files.dat')
 data_files = lf.load_files('./filelist/{}_data_files.dat'.format(opt.channel))
 
@@ -245,7 +249,9 @@ for sig in sig_files:
     sig_tmp['deta'] = np.abs(sig_tmp['eta_1'] - sig_tmp['eta_2'])
     sig_tmp = sig_tmp.drop(['wt', 'multi_class'], axis=1)
 
-    ff.write_score_multi(sig_tmp, xgb_clf, opt.channel, opt.do_systematics)
+    ff.write_score_multi(sig_tmp, xgb_clf, opt.channel, opt.sig_sample, opt.do_systematics)
+
+    del sig_tmp
 
 
 # pf.plot_correlation_matrix(
@@ -263,6 +269,11 @@ for bkg in bkg_files:
             cut_features,
             apply_cuts=opt.apply_selection
             )
+
+    # memory usage
+    # mem = bkg_tmp.memory_usage(index=True).sum()
+    # mem = mem / 1024**2
+    # print 'memory usage: {} MB'.format(mem)
 
     ## need to multiply event weight by
     ## (XS * Lumi) / #events
@@ -283,10 +294,17 @@ for bkg in bkg_files:
         #     bkg_tmp['wt'] = bkg_tmp['wt'] * (xs_tmp * lumi)/events_tmp
 
         bkg_tmp['deta'] = np.abs(bkg_tmp['eta_1'] - bkg_tmp['eta_2'])
-        bkg_tmp = bkg_tmp.drop(['wt', 'multi_class'], axis=1)
+        bkg_tmp.drop(['wt', 'multi_class'], axis=1, inplace=True)
 
 
-        ff.write_score_multi(bkg_tmp, xgb_clf, opt.channel, opt.do_systematics)
+
+        ff.write_score_multi(bkg_tmp, xgb_clf, opt.channel, opt.sig_sample, opt.do_systematics)
+
+
+        del bkg_tmp
+
+        gc.collect()
+
 
     else:
         score = 0.0
@@ -324,5 +342,7 @@ for data in data_files:
     data_tmp['deta'] = np.abs(data_tmp['eta_1'] - data_tmp['eta_2'])
     data_tmp = data_tmp.drop(['wt', 'multi_class'], axis=1)
 
-    ff.write_score_multi(data_tmp, xgb_clf, opt.channel, opt.do_systematics)
+    ff.write_score_multi(data_tmp, xgb_clf, opt.channel, opt.sig_sample, opt.do_systematics)
+
+    del data_tmp
 

@@ -4,7 +4,9 @@ import pandas as pd
 import numpy as np
 
 def load_mc_ntuple(data, tree, branch, sig, channel, cut_feats, apply_cuts):
-    ## LOAD MC NTUPLES AND APPLY BASELINE CUTS BY CHANNEL
+    # LOAD MC NTUPLES AND APPLY BASELINE CUTS BY CHANNEL
+    # need to do something for when df too large..
+
 
     try:
         iterator = uproot.iterate(data, tree, branches=branch+cut_feats)
@@ -170,20 +172,19 @@ def load_data_ntuple(data, tree, branch, sig, channel, cut_feats, apply_cuts):
 
             ## TO SELECT THE SIGNAL SAMPLE ACCORDING TO
             ## CUTS APPLIED RELATING TO n_jets AND mjj
-            try:
-                if sig == 'powheg':
-                    df_b = df_b[
-                            (df_b['n_jets'] < 2)
-                            | ((df_b['n_jets'] >= 2)
-                                & (df_b['mjj'] < 300))
-                            ]
-                elif sig == 'JHU':
-                    df_b = df_b[
-                            ((df_b['n_jets'] >= 2)
-                            & (df_b['mjj'] > 300))
-                            ]
-            except ValueError:
-                print 'Signal sample not in ["powheg", "JHU"]'
+            if sig == 'powheg':
+                df_b = df_b[
+                        (df_b['n_jets'] < 2)
+                        | ((df_b['n_jets'] >= 2)
+                            & (df_b['mjj'] < 300))
+                        ]
+            elif sig == 'JHU':
+                df_b = df_b[
+                        ((df_b['n_jets'] >= 2)
+                        & (df_b['mjj'] > 300))
+                        ]
+            else:
+                assert ValueError('Signal sample not in ["powheg", "JHU"]')
 
             df_b = df_b[(df_b['m_sv'] > 0)] ## SOME m_sv ARE MISSING
 

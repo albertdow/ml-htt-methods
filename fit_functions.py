@@ -6,6 +6,7 @@ import pickle
 import plot_functions as pf
 from scipy import interp
 from root_numpy import array2root
+import json
 
 from keras.models import Sequential
 from keras.layers import Dense
@@ -483,12 +484,13 @@ def fit_gbc_ttsplit(X, channel, sig_sample):
 
 def fit_multiclass_ttsplit(X, channel, sig_sample):
 
-    X = X.sample(frac=1).reset_index(drop=True)
-
+    # use 'wt_xs' as event weights
+    # but calculate class weights for training
+    # later using 'wt'
     X_train,X_test, y_train,y_test,w_train,w_test  = train_test_split(
         X,
         X['multi_class'],
-        X['wt'],
+        X['wt_xs'],
         test_size=0.30,
         random_state=123456,
         )
@@ -521,6 +523,316 @@ def fit_multiclass_ttsplit(X, channel, sig_sample):
         #     'Cannot divide by zero'
 
     # print class_weights
+
+    sum_w = X_train['wt_xs'].sum()
+    # print 'sum_w', sum_w
+    sum_w_cat = X_train.groupby('multi_class')['wt_xs'].sum()
+    # print 'sum_w_cat', sum_w_cat
+    class_weights = sum_w / sum_w_cat
+
+    class_weight_dict = dict(class_weights)
+
+    print class_weight_dict
+
+    # multiply w_train by class_weight now
+
+    for i in w_train.index:
+        for key, value in class_weight_dict.iteritems():
+        # print 'before: ',index, row
+            if y_train[i] == key:
+                w_train.at[i] *= value
+                # print 'after dividing by class_weight: ',index, row
+
+
+
+
+    ## use one-hot encoding
+    # encode class values as integers
+    encoder_train = LabelEncoder()
+    encoder_test = LabelEncoder()
+    encoder_train.fit(y_train)
+
+    y_train = encoder_train.transform(y_train)
+
+    encoder_test.fit(y_test)
+    y_test = encoder_test.transform(y_test)
+
+
+
+    # test_class_weight = class_weight.compute_class_weight(
+    #     'balanced', np.unique(encoded_Y), encoded_Y
+    #     )
+    # print test_class_weight
+
+    # print 'original Y: ', X_train['multi_class'].head()
+    # print 'one-hot y: ', y_train
+
+
+    X_train = X_train.drop([
+        'wt', 'wt_xs', 'process', 'multi_class', 'class', 'event',
+        'gen_match_1', 'gen_match_2'
+        ], axis=1).reset_index(drop=True)
+
+    X_test = X_test.drop([
+        'wt', 'wt_xs', 'process', 'multi_class', 'class', 'event',
+        'gen_match_1', 'gen_match_2'
+        ], axis=1).reset_index(drop=True)
+
+
+    ## standard scaler
+    # columns = X_train.columns
+    # scaler = StandardScaler()
+    # np_scaled_train = scaler.fit_transform(X_train.as_matrix())
+    # del X_train
+    # X_train = pd.DataFrame(np_scaled_train)
+    # X_train.columns = columns
+
+    # np_scaled_test = scaler.fit_transform(X_test.as_matrix())
+    # del X_test
+    # X_test = pd.DataFrame(np_scaled_test)
+    # X_test.columns = columns
+
+    ## SOME TESTS WITH WEIGHTS
+    # w_train *= (sum(w) / sum(w_train))
+    # w_test *= (sum(w) / sum(w_test))
+
+
+
+    # sum_wpos = np.sum(w_train[y_train == 1])
+    # sum_wneg = np.sum(w_train[y_train != 1])
+    # ratio = sum_wneg / sum_wpos
+
+    # X_train = X_train.drop(['wt', 'class', 'eta_1', 'eta_2'], axis=1).reset_index(drop=True)
+    # X_test = X_test.drop(['wt', 'class', 'eta_1', 'eta_2'], axis=1).reset_index(drop=True)
+
+    # if channel == 'tt':
+
+    # if sig_sample == 'powheg':
+    #     params = {
+    #             'objective':'multi:softprob',
+    #             'max_depth':3,
+    #             'min_child_weight':1,
+    #             'learning_rate':0.01,
+    #             'silent':1,
+    #             # 'scale_pos_weight':ratio,
+    #             'n_estimators':2000,
+    #             'gamma':1.0,
+    #             'subsample':0.7,
+    #             'colsample_bytree':0.8,
+    #             'max_delta_step':1,
+    #             'nthread':-1,
+    #             'seed':123456
+    #             }
+
+
+    if sig_sample in ['powheg']:
+        if channel in ['tt','mt','et','em']:
+            params = {
+                    'objective':'multi:softprob',
+                    'max_depth':8,
+                    # 'min_child_weight':1,
+                    'learning_rate':0.025,
+                    'silent':1,
+                    # 'scale_pos_weight':ratio,
+                    'n_estimators':100,
+                    # 'gamma':0.5,
+                    'subsample':0.9,
+                    'colsample_bytree':0.9,
+                    # 'max_delta_step':3,
+                    'nthread':-1,
+                    'seed':123456
+                    }
+    if sig_sample in ['JHU']:
+        if channel in ['tt','mt','et','em']:
+            params = {
+                    'objective':'multi:softprob',
+                    'max_depth':8,
+                    # 'min_child_weight':1,
+                    'learning_rate':0.025,
+                    'silent':1,
+                    # 'scale_pos_weight':ratio,
+                    'n_estimators':100,
+                    # 'gamma':0.5,
+                    'subsample':0.9,
+                    'colsample_bytree':0.9,
+                    # 'max_delta_step':3,
+                    'nthread':-1,
+                    'seed':123456
+                    }
+
+        # if channel in ['mt']:
+        #     params = {
+        #             'objective':'multi:softprob',
+        #             'max_depth':8,
+        #             # 'min_child_weight':1,
+        #             'learning_rate':0.025,
+        #             'silent':1,
+        #             # 'scale_pos_weight':ratio,
+        #             'n_estimators':100,
+        #             # 'gamma':2.0,
+        #             'subsample':0.9,
+        #             'colsample_bytree':0.9,
+        #             # 'max_delta_step':1,
+        #             'nthread':-1,
+        #             'seed':123456
+        #             }
+
+        # if channel in ['et']:
+        #     params = {
+        #             'objective':'multi:softprob',
+        #             'max_depth':7,
+        #             'min_child_weight':1,
+        #             'learning_rate':0.025,
+        #             'silent':1,
+        #             # 'scale_pos_weight':ratio,
+        #             'n_estimators':100,
+        #             'gamma':2.0,
+        #             'subsample':0.9,
+        #             'colsample_bytree':0.9,
+        #             # 'max_delta_step':1,
+        #             'nthread':-1,
+        #             'seed':123456
+        #             }
+
+        # if channel == 'em':
+        #     params = {
+        #             'objective':'multi:softprob',
+        #             'max_depth':8,
+        #             'min_child_weight':1,
+        #             'learning_rate':0.025,
+        #             'silent':1,
+        #             # 'scale_pos_weight':ratio,
+        #             'n_estimators':100,
+        #             'gamma':2.0,
+        #             'subsample':0.9,
+        #             'colsample_bytree':0.9,
+        #             'max_delta_step':1,
+        #             'nthread':-1,
+        #             'seed':123456
+        #             }
+
+    xgb_clf = xgb.XGBClassifier(**params)
+
+    xgb_clf.fit(
+            X_train,
+            y_train,
+            sample_weight = w_train,
+            early_stopping_rounds=10,
+            eval_set=[(X_train, y_train, w_train), (X_test, y_test, w_test)],
+            eval_metric = ['mlogloss'],
+            verbose=True
+            )
+
+    # evals_result = xgb_clf.evals_result()
+
+    y_predict = xgb_clf.predict(X_test)
+    print 'true label: {},{},{}'.format(y_test[0],y_test[1],y_test[2])
+    print 'predicted label: {},{},{}'.format(y_predict[0],y_predict[1],y_predict[2])
+
+
+    print classification_report(
+            y_test,
+            y_predict,
+            # target_names=["background", "signal"],
+            target_names=list(encoder_test.classes_),
+            sample_weight=w_test
+            )
+
+
+    y_pred = xgb_clf.predict_proba(X_test)
+    print 'highest proba: {},{},{}'.format(max(y_pred[0]),max(y_pred[1]),max(y_pred[2]))
+
+    # print y_pred
+    # proba_predict_train = xgb_clf.predict_proba(X_train)[:,1]
+    # proba_predict_test = xgb_clf.predict_proba(X_test)[:,1]
+
+    ## 15% of highest probablilty output
+
+    # Make predictions for s and b
+
+    ## SAVE FOR SKIP
+
+    # with open('fpr.pkl', 'w') as f:
+    #     pickle.dump(fpr, f)
+    # with open('tpr.pkl', 'w') as f:
+    #     pickle.dump(tpr, f)
+    # with open('auc.pkl', 'w') as f:
+    #     pickle.dump(auc, f)
+    # with open('X_train.pkl', 'w') as f:
+    #     pickle.dump(X_train, f)
+    # with open('y_train.pkl', 'w') as f:
+    #     pickle.dump(y_train, f)
+    # with open('X_test.pkl', 'w') as f:
+    #     pickle.dump(X_test, f)
+    # with open('y_test.pkl', 'w') as f:
+    #     pickle.dump(y_test, f)
+    # with open('w_test.pkl', 'w') as f:
+    #     pickle.dump(w_test, f)
+    # with open('w_train.pkl', 'w') as f:
+    #     pickle.dump(w_train, f)
+    with open('multi_{}_{}_xgb.pkl'.format(channel, sig_sample), 'w') as f:
+        pickle.dump(xgb_clf, f)
+
+
+#     auc = roc_auc_score(y_test, y_pred[:,1])
+#     print auc
+#     fpr, tpr, _ = roc_curve(y_test, y_pred[:,1])
+
+    # pf.plot_roc_curve(
+    #         fpr, tpr, auc,
+    #         'multi_{}_{}_roc.pdf'.format(channel, sig_sample))
+
+    # Define these so that I can use plot_output()
+    xg_train = xgb.DMatrix(
+            X_train,
+            label=y_train,
+            # missing=-9999,
+            weight=w_train
+            )
+    xg_test = xgb.DMatrix(
+            X_test,
+            label=y_test,
+            # missing=-9999,
+            weight=w_test
+            )
+
+    # pf.plot_output(
+    #         xgb_clf.booster(),
+    #         xg_train, xg_test,
+    #         y_train, y_test,
+    #         'multi_{}_{}_output.pdf'.format(channel, sig_sample))
+
+    pf.plot_features(
+            xgb_clf.booster(),
+            'weight',
+            'multi_{}_{}_features_weight.pdf'.format(channel, sig_sample))
+
+    pf.plot_features(
+            xgb_clf.booster(),
+            'gain',
+            'multi_{}_{}_features_gain.pdf'.format(channel, sig_sample))
+
+
+    y_prediction = xgb_clf.predict(X_test)
+
+    pf.plot_confusion_matrix(
+            y_test, y_prediction, w_test,
+            # classes=['background', 'signal'],
+            classes=list(encoder_test.classes_),
+            figname='multi_{}_{}_non-normalised_weights_cm.pdf'.format(channel, sig_sample),
+            normalise=False)
+
+    pf.plot_confusion_matrix(
+            y_test, y_prediction, w_test,
+            classes=list(encoder_test.classes_),
+            figname='multi_{}_{}_normalised_weights_cm.pdf'.format(channel, sig_sample),
+            normalise=True)
+
+    return None
+
+def fit_multiclass_kfold(X, channel, sig_sample):
+
+    ## START EDITING THIS FOR ODD/EVEN SPLIT
 
     sum_w = X_train['wt'].sum()
     # print 'sum_w', sum_w
@@ -793,11 +1105,8 @@ def fit_multiclass_ttsplit(X, channel, sig_sample):
 
     return None
 
-
 def fit_keras(X, channel, sig_sample):
     ### TEST A KERAS MODEL
-
-    X = X.sample(frac=1).reset_index(drop=True)
 
     X_train,X_test, y_train,y_test,w_train,w_test  = train_test_split(
         X,
@@ -807,6 +1116,27 @@ def fit_keras(X, channel, sig_sample):
         random_state=123456,
         )
 
+    sum_w = X_train['wt'].sum()
+    # print 'sum_w', sum_w
+    sum_w_cat = X_train.groupby('multi_class')['wt'].sum()
+    # print 'sum_w_cat', sum_w_cat
+    class_weights = sum_w / sum_w_cat
+
+    class_weight_dict = dict(class_weights)
+
+    print class_weight_dict
+
+    for i in w_train.index:
+        for key, value in class_weight_dict.iteritems():
+        # print 'before: ',index, row
+            if y_train[i] == key:
+                w_train.at[i] *= value
+                # print 'after dividing by class_weight: ',index, row
+
+
+    # use wt_xs as xsection factor for scaling training weight
+    w_train = w_train.multiply(X_train['wt_xs'])
+    w_test = w_test.multiply(X_test['wt_xs'])
 
     ## use one-hot encoding
     # encode class values as integers
@@ -814,11 +1144,11 @@ def fit_keras(X, channel, sig_sample):
     encoder.fit(y_train)
     encoded_y_train = encoder.transform(y_train)
     # convert integers to dummy variables (i.e. one hot encoded)
-    y_train = np_utils.to_categorical(encoded_y_train, num_classes=7)
+    y_train = np_utils.to_categorical(encoded_y_train, num_classes=8)
     encoder.fit(y_test)
     encoded_y_test = encoder.transform(y_test)
     # convert integers to dummy variables (i.e. one hot encoded)
-    y_test = np_utils.to_categorical(encoded_y_test, num_classes=7)
+    y_test = np_utils.to_categorical(encoded_y_test, num_classes=8)
 
     # test_class_weight = class_weight.compute_class_weight(
     #     'balanced', np.unique(encoded_Y), encoded_Y
@@ -829,8 +1159,8 @@ def fit_keras(X, channel, sig_sample):
     print 'one-hot y: ', y_train[0]
 
 
-    X_train = X_train.drop(['wt', 'multi_class', 'class'], axis=1).reset_index(drop=True)
-    X_test = X_test.drop(['wt', 'multi_class', 'class'], axis=1).reset_index(drop=True)
+    X_train = X_train.drop(['wt', 'process', 'multi_class', 'class'], axis=1).reset_index(drop=True)
+    X_test = X_test.drop(['wt', 'process', 'multi_class', 'class'], axis=1).reset_index(drop=True)
 
 
     ## standard scaler
@@ -867,7 +1197,7 @@ def fit_keras(X, channel, sig_sample):
     ## how many features
     num_inputs = X_train.shape[1]
     ## how many classes
-    num_outputs = 7
+    num_outputs = 8
 
     model = Sequential()
     model.add(
@@ -921,9 +1251,9 @@ def fit_keras(X, channel, sig_sample):
         scaled_train,
         y_train,
         # class_weight=test_class_weight,
-        # sample_weight=w_train,
+        sample_weight=w_train,
         # validation_data=(X_test,y_test,w_test),
-        validation_data=(scaled_test,y_test),#w_test),
+        validation_data=(scaled_test,y_test,w_test),
         batch_size=32,
         epochs=10,
         shuffle=True,
@@ -997,10 +1327,10 @@ def write_score(data, model, channel, doSystematics):
 
 
 
-def write_score_multi(data, model, channel, doSystematics):
+def write_score_multi(data, model, channel, sig_sample, doSystematics):
     ## START EDITING THIS
 
-    path = '/vols/cms/akd116/Offline/output/SM/2018/Mar19'
+    path = '/vols/cms/akd116/Offline/output/SM/2018/Mar19' # nominal ntuples
 
     # for full systematics need this:
     systematics = [
@@ -1046,8 +1376,13 @@ def write_score_multi(data, model, channel, doSystematics):
             np_score = np.array(0.0)
             cat = ''
 
-        np_score.dtype = [('mva_score_Mar29_powheg', np.float32)]
-        cat.dtype = [('mva_cat_Mar29_powheg', np.int)]
+        if sig_sample == 'powheg':
+            np_score.dtype = [('mva_score_Apr5_3_powheg', np.float32)]
+            cat.dtype = [('mva_cat_Apr5_3_powheg', np.int)]
+        elif sig_sample == 'JHU':
+            np_score.dtype = [('mva_score_Apr5_3_JHU', np.float32)]
+            cat.dtype = [('mva_cat_Apr5_3_JHU', np.int)]
+
         array2root(
             np_score,
             '{}/{}_{}_2016.root'.format(path, key, channel),

@@ -39,28 +39,28 @@ import fit_functions as ff
 parser = argparse.ArgumentParser()
 
 parser.add_argument('-c', action='store_true', default=False,
-        dest='apply_selection', help='apply the preselection (default False)')
+    dest='apply_selection', help='apply the preselection (default False)')
 parser.add_argument('--mode', action='store', default='sklearn_ttsplit',
-        help='training procedure (default train_test_split)')
+    help='training procedure (default train_test_split)')
 parser.add_argument('--channel', action='store', default='mt',
-        help='channels to train on')
+    help='channels to train on')
 parser.add_argument('--sig_sample', action='store', default='powheg',
-        help='''ggh signal sample to run on (default powheg)\n
-        choose powheg for n_jets < 2 | (n_jets >= 2 & mjj < 300)\n
-        choose JHU for n_jets >=2 & mjj > 300''')
+    help='''ggh signal sample to run on (default powheg)\n
+    choose powheg for n_jets < 2 | (n_jets >= 2 & mjj < 300)\n
+    choose JHU for n_jets >=2 & mjj > 300''')
+parser.add_argument('--kfold', action='store_true', default=False,
+    dest='kfold', help='apply kfold on dataset (default False)')
+parser.add_argument('--analysis', action='store', default='cp',
+    dest='analysis', help='what analysis to make dataset for (default cp)')
+
 
 opt = parser.parse_args()
 
 ## To create dataset for chosen channel & sig_sample (i.e. boosted or dijet cat)
 
-print '\nCreate dataeset for {} channel with {} sig samples\n'.format(opt.channel, opt.sig_sample)
-if opt.apply_selection:
-    sig_files = lf.load_files('./filelist/sig_{}_files.dat'.format(opt.sig_sample))
-    bkg_files = lf.load_files('./filelist/bkgs_files.dat')
-else:
-    opt.sig_sample = 'JHU'
-    sig_files = lf.load_files('./filelist/sig_{}_files.dat'.format(opt.sig_sample))
-    bkg_files = lf.load_files('./filelist/full_mc_files.dat')
+print '\nCreate dataset for {} channel with {} sig samples\n'.format(opt.channel, opt.sig_sample)
+sig_files = lf.load_files('./filelist/sig_{}_files.dat'.format(opt.sig_sample))
+bkg_files = lf.load_files('./filelist/bkgs_files.dat')
 data_files = lf.load_files('./filelist/{}_data_files.dat'.format(opt.channel))
 
 # this file contains information about the xsections, lumi and event numbers
@@ -116,23 +116,36 @@ elif opt.channel == 'em':
 # coming from the xsection
 
 if opt.mode in ['keras_multi', 'xgb_multi']:
+    if opt.analysis == 'cp':
+        features = [
+            'pt_1', 'pt_2', 'eta_1', 'eta_2', 'dphi',
+            'mt_1', 'mt_2', 'mt_lep',
+            'm_vis', 'm_sv', 'pt_tt', 'eta_tt',
+            'met', 'met_dphi_1', 'met_dphi_2',
+            'n_jets', 'n_bjets',
+            'pt_vis',
+            'phi_1', 'phi_2',
+            'wt', # for training/validation weights
+            'gen_match_1', 'gen_match_2', # for splitting DY into separate processes
+            'event',
 
-    features = [
-        'pt_1', 'pt_2', 'eta_1', 'eta_2', 'dphi',
-        'mt_1', 'mt_2', 'mt_lep',
-        'm_vis', 'm_sv', 'pt_tt', 'eta_tt',
-        'met', 'met_dphi_1', 'met_dphi_2',
-        'n_jets', 'n_bjets',
-        'pt_vis',
-        'phi_1', 'phi_2',
-        'wt', # for training/validation weights
-        'gen_match_1', 'gen_match_2', # for splitting DY into separate processes
-
-        # add more features similar to KIT take tt for now
-        # 'mjj', 'jdeta',
-        # 'jpt_1', 'jeta_1', 'jphi_1',
-        # 'jphi_2',
-        # 'jdphi',
+    if opt.analysis == 'sm':
+        features = [
+            'pt_1', 'pt_2', 'eta_1', 'eta_2', 'dphi',
+            'mt_1', 'mt_2', 'mt_lep',
+            'm_vis', 'm_sv', 'pt_tt', 'eta_tt',
+            'met', 'met_dphi_1', 'met_dphi_2',
+            'n_jets', 'n_bjets',
+            'pt_vis',
+            'phi_1', 'phi_2',
+            'wt', # for training/validation weights
+            'gen_match_1', 'gen_match_2', # for splitting DY into separate processes
+            'event',
+            # add more features similar to KIT take tt for now
+            'mjj', 'jdeta',
+            'jpt_1', 'jeta_1', 'jphi_1',
+            'jphi_2',
+            'jdphi',
         ]
 else:
     features = [
@@ -147,68 +160,125 @@ else:
 if opt.channel == 'em':
     features.append('pzeta')
 
-class_dict = {
-    'ggh': ['GluGluToHToTauTau_M-125',
-        'GluGluH2JetsToTauTau_M125_CPmixing_maxmix',
-        'GluGluH2JetsToTauTau_M125_CPmixing_sm',
-        'GluGluH2JetsToTauTau_M125_CPmixing_pseudoscalar'],
-    'qqh': ['VBFHToTauTau_M-125',
-        'VBFHToWWTo2L2Nu_M-125',
-        'VBFHiggs0Mf05ph0_M-125',
-        'VBFHiggs0M_M-125',
-        'VBFHiggs0PM_M-125'],
-    'dy': ['DYJetsToLL_M-10-50-LO',
-        'DY1JetsToLL-LO',
-        'DY2JetsToLL-LO',
-        'DY3JetsToLL-LO',
-        'DY4JetsToLL-LO',
-        'DYJetsToLL-LO-ext1',
-        'DYJetsToLL-LO-ext2'],
-    'w': [ 'W1JetsToLNu-LO',
-        'W2JetsToLNu-LO-ext',
-        'W2JetsToLNu-LO',
-        'W3JetsToLNu-LO-ext',
-        'W3JetsToLNu-LO',
-        'W4JetsToLNu-LO-ext1',
-        'W4JetsToLNu-LO-ext2',
-        'W4JetsToLNu-LO',
-        'WGToLNuG-ext',
-        'WGToLNuG',
-        'WGstarToLNuEE',
-        'WGstarToLNuMuMu',
-        'WJetsToLNu-LO-ext',
-        'WJetsToLNu-LO',
-        'WminusHToTauTau_M-125',
-        'WplusHToTauTau_M-125'],
-    'tt': ['TT'],
-    'qcd': ['TauB','TauC',
-        'TauD','TauE',
-        'TauF','TauG',
-        'TauHv2','TauHv3',
-        'SingleMuonB','SingleMuonC',
-        'SingleMuonD','SingleMuonE',
-        'SingleMuonF','SingleMuonG',
-        'SingleMuonHv2','SingleMuonHv3',
-        'SingleElectronB','SingleElectronC',
-        'SingleElectronD','SingleElectronE',
-        'SingleElectronF','SingleElectronG',
-        'SingleElectronHv2','SingleElectronHv3',
-        'MuonEGB','MuonEGC',
-        'MuonEGD','MuonEGE',
-        'MuonEGF','MuonEGG',
-        'MuonEGHv2','MuonEGHv3'],
-    'misc': ['EWKWMinus2Jets_WToLNu-ext1','EWKWMinus2Jets_WToLNu-ext2',
-        'EWKWMinus2Jets_WToLNu','EWKWPlus2Jets_WToLNu-ext1',
-        'EWKWPlus2Jets_WToLNu-ext2','EWKWPlus2Jets_WToLNu',
-        'EWKZ2Jets_ZToLL-ext','EWKZ2Jets_ZToLL',
-        'EWKZ2Jets_ZToNuNu-ext','EWKZ2Jets_ZToNuNu',
-        'WWTo1L1Nu2Q','WZJToLLLNu',
-        'WZTo1L1Nu2Q','WZTo1L3Nu',
-        'VVTo2L2Nu-ext1','VVTo2L2Nu',
-        'WZTo2L2Q','ZZTo2L2Q','ZZTo4L-amcat',
-        'GluGluHToWWTo2L2Nu_M-125','ZHToTauTau_M-125',
-        'T-tW','T-t','Tbar-tW','Tbar-t']
-    }
+if opt.channel in ['em','et','mt']:
+    class_dict = {
+        'ggh': ['GluGluToHToTauTau_M-125',
+            'GluGluH2JetsToTauTau_M125_CPmixing_maxmix',
+            'GluGluH2JetsToTauTau_M125_CPmixing_sm',
+            'GluGluH2JetsToTauTau_M125_CPmixing_pseudoscalar'],
+        'qqh': ['VBFHToTauTau_M-125',
+            'VBFHToWWTo2L2Nu_M-125',
+            'VBFHiggs0Mf05ph0_M-125',
+            'VBFHiggs0M_M-125',
+            'VBFHiggs0PM_M-125'],
+        'dy': ['DYJetsToLL_M-10-50-LO',
+            'DY1JetsToLL-LO',
+            'DY2JetsToLL-LO',
+            'DY3JetsToLL-LO',
+            'DY4JetsToLL-LO',
+            'DYJetsToLL-LO-ext1',
+            'DYJetsToLL-LO-ext2'],
+        'w': [ 'W1JetsToLNu-LO',
+            'W2JetsToLNu-LO-ext',
+            'W2JetsToLNu-LO',
+            'W3JetsToLNu-LO-ext',
+            'W3JetsToLNu-LO',
+            'W4JetsToLNu-LO-ext1',
+            'W4JetsToLNu-LO-ext2',
+            'W4JetsToLNu-LO',
+            'WGToLNuG-ext',
+            'WGToLNuG',
+            'WGstarToLNuEE',
+            'WGstarToLNuMuMu',
+            'WJetsToLNu-LO-ext',
+            'WJetsToLNu-LO',
+            'WminusHToTauTau_M-125',
+            'WplusHToTauTau_M-125'],
+        'tt': ['TT'],
+        'qcd': ['TauB','TauC',
+            'TauD','TauE',
+            'TauF','TauG',
+            'TauHv2','TauHv3',
+            'SingleMuonB','SingleMuonC',
+            'SingleMuonD','SingleMuonE',
+            'SingleMuonF','SingleMuonG',
+            'SingleMuonHv2','SingleMuonHv3',
+            'SingleElectronB','SingleElectronC',
+            'SingleElectronD','SingleElectronE',
+            'SingleElectronF','SingleElectronG',
+            'SingleElectronHv2','SingleElectronHv3',
+            'MuonEGB','MuonEGC',
+            'MuonEGD','MuonEGE',
+            'MuonEGF','MuonEGG',
+            'MuonEGHv2','MuonEGHv3'],
+        'misc': ['EWKWMinus2Jets_WToLNu-ext1','EWKWMinus2Jets_WToLNu-ext2',
+            'EWKWMinus2Jets_WToLNu','EWKWPlus2Jets_WToLNu-ext1',
+            'EWKWPlus2Jets_WToLNu-ext2','EWKWPlus2Jets_WToLNu',
+            'EWKZ2Jets_ZToLL-ext','EWKZ2Jets_ZToLL',
+            'EWKZ2Jets_ZToNuNu-ext','EWKZ2Jets_ZToNuNu',
+            'WWTo1L1Nu2Q','WZJToLLLNu',
+            'WZTo1L1Nu2Q','WZTo1L3Nu',
+            'VVTo2L2Nu-ext1','VVTo2L2Nu',
+            'WZTo2L2Q','ZZTo2L2Q','ZZTo4L-amcat',
+            'GluGluHToWWTo2L2Nu_M-125','ZHToTauTau_M-125',
+            'T-tW','T-t','Tbar-tW','Tbar-t']
+        }
+
+if opt.channel == 'tt':
+    class_dict = {
+        'ggh': ['GluGluToHToTauTau_M-125',
+            'GluGluH2JetsToTauTau_M125_CPmixing_maxmix',
+            'GluGluH2JetsToTauTau_M125_CPmixing_sm',
+            'GluGluH2JetsToTauTau_M125_CPmixing_pseudoscalar'],
+        'qqh': ['VBFHToTauTau_M-125',
+            'VBFHToWWTo2L2Nu_M-125',
+            'VBFHiggs0Mf05ph0_M-125',
+            'VBFHiggs0M_M-125',
+            'VBFHiggs0PM_M-125'],
+        'dy': ['DYJetsToLL_M-10-50-LO',
+            'DY1JetsToLL-LO',
+            'DY2JetsToLL-LO',
+            'DY3JetsToLL-LO',
+            'DY4JetsToLL-LO',
+            'DYJetsToLL-LO-ext1',
+            'DYJetsToLL-LO-ext2'],
+        'qcd': ['TauB','TauC',
+            'TauD','TauE',
+            'TauF','TauG',
+            'TauHv2','TauHv3',
+            'SingleMuonB','SingleMuonC',
+            'SingleMuonD','SingleMuonE',
+            'SingleMuonF','SingleMuonG',
+            'SingleMuonHv2','SingleMuonHv3',
+            'SingleElectronB','SingleElectronC',
+            'SingleElectronD','SingleElectronE',
+            'SingleElectronF','SingleElectronG',
+            'SingleElectronHv2','SingleElectronHv3',
+            'MuonEGB','MuonEGC',
+            'MuonEGD','MuonEGE',
+            'MuonEGF','MuonEGG',
+            'MuonEGHv2','MuonEGHv3'],
+        'misc': ['EWKWMinus2Jets_WToLNu-ext1','EWKWMinus2Jets_WToLNu-ext2',
+            'EWKWMinus2Jets_WToLNu','EWKWPlus2Jets_WToLNu-ext1',
+            'EWKWPlus2Jets_WToLNu-ext2','EWKWPlus2Jets_WToLNu',
+            'EWKZ2Jets_ZToLL-ext','EWKZ2Jets_ZToLL',
+            'EWKZ2Jets_ZToNuNu-ext','EWKZ2Jets_ZToNuNu',
+            'WWTo1L1Nu2Q','WZJToLLLNu',
+            'WZTo1L1Nu2Q','WZTo1L3Nu',
+            'VVTo2L2Nu-ext1','VVTo2L2Nu',
+            'WZTo2L2Q','ZZTo2L2Q','ZZTo4L-amcat',
+            'GluGluHToWWTo2L2Nu_M-125','ZHToTauTau_M-125',
+            'T-tW','T-t','Tbar-tW','Tbar-t',
+            # w
+            'W1JetsToLNu-LO','W2JetsToLNu-LO-ext','W2JetsToLNu-LO',
+            'W3JetsToLNu-LO-ext','W3JetsToLNu-LO','W4JetsToLNu-LO-ext1',
+            'W4JetsToLNu-LO-ext2','W4JetsToLNu-LO','WGToLNuG-ext',
+            'WGToLNuG','WGstarToLNuEE','WGstarToLNuMuMu',
+            'WJetsToLNu-LO-ext','WJetsToLNu-LO','WminusHToTauTau_M-125',
+            'WplusHToTauTau_M-125',
+            # tt
+            'TT']
+        }
 
 
 # directory of the files (usually /vols/cms/)
@@ -231,7 +301,7 @@ for sig in sig_files:
     xs_tmp = params_file[sig]['xs']
     events_tmp = params_file[sig]['evt']
     sig_tmp['process'] = sig
-    sig_tmp['wt'] = sig_tmp['wt'] * (xs_tmp * lumi)/events_tmp
+    sig_tmp['wt_xs'] = sig_tmp['wt'] * (xs_tmp * lumi)/events_tmp
 
     ## test multi_classes
     if opt.mode in ['keras_multi', 'xgb_multi']:
@@ -275,7 +345,7 @@ for bkg in bkg_files:
     events_tmp = params_file[bkg]['evt']
     if len(bkg_tmp) >= 1:
         bkg_tmp['process'] = bkg
-        bkg_tmp['wt'] = bkg_tmp['wt'] * (xs_tmp * lumi)/events_tmp
+        bkg_tmp['wt_xs'] = bkg_tmp['wt'] * (xs_tmp * lumi)/events_tmp
 
         if opt.mode in ['keras_multi', 'xgb_multi']:
             for key, value in class_dict.iteritems():
@@ -304,7 +374,7 @@ for bkg in bkg_files:
                     & ((bkg_tmp['gen_match_1'] != 5) & (bkg_tmp['gen_match_2'] != 5))
                     ]
                 zl_tmp.reset_index(drop=True)
-                zl_tmp['multi_class'] = 'zll' ## zl -- > zll
+                zl_tmp['multi_class'] = 'misc' ## zl -- > misc for tt training
                 # print zl_tmp.shape
 
                 zj_tmp = bkg_tmp[(bkg_tmp['gen_match_1'] == 6) | (bkg_tmp['gen_match_2'] == 6)]
@@ -367,6 +437,7 @@ for data in data_files:
             )
 
     data_tmp['process'] = data
+    data_tmp['wt_xs'] = data_tmp['wt']
     if opt.mode in ['keras_multi', 'xgb_multi']:
         for key, value in class_dict.iteritems():
             if data in value:
@@ -410,13 +481,85 @@ X['class'] = y.values
 
 # pf.plot_correlation_matrix(X, 'correlation_matrix.pdf')
 
-if opt.apply_selection:
-    X.to_hdf('data/dataset_cpsm_{}_{}.hdf5'
-        .format(opt.channel, opt.sig_sample),
-        key='X',
-        mode='w')
+
+# randomise the order of events
+X = X.sample(frac=1).reset_index(drop=True)
+
+
+## divide datasets
+if opt.kfold:
+
+    # X_fold1,X_fold2,y_fold1,y_fold2,w_fold1,w_fold2 = train_test_split(
+    #     X,
+    #     X['multi_class'],
+    #     X['wt'],
+    #     test_size=0.50,
+    #     random_state=123456,
+    #     )
+
+    # get odd event numbers
+    X_fold1 = X[(X['event'] % 2 == 1)]#.drop(['event'], axis=1)
+
+    # get even event numbers
+    X_fold2 = X[(X['event'] % 2 == 0)]#.drop(['event'], axis=1)
+
+
+    ## do the class weights now and then multiply by xs factor
+
+    # sum_w = X_train['wt'].sum()
+    # # print 'sum_w', sum_w
+    # sum_w_cat = X_train.groupby('multi_class')['wt'].sum()
+
+
+    # # print 'sum_w_cat', sum_w_cat
+    # class_weights = sum_w / sum_w_cat
+
+    # class_weight_dict = dict(class_weights)
+
+    # print class_weight_dict
+
+    # print X_train
+
+    # for i in w_train.index:
+    #     for key, value in class_weight_dict.iteritems():
+    #     # print 'before: ',index, row
+    #         if y_train[i] == key:
+    #             w_train.at[i] *= value
+    #             # print 'after dividing by class_weight: ',index, row
+
+    # print X_train
+
+    # ## need to multiply event weight by
+    # ## (XS * Lumi) / #events
+
+    # gb = data.groupby('process')
+    # df_dict = {x: gb.get_group(x) for x in gb.groups}
+
+    # xs_tmp = params_file[bkg]['xs']
+    # events_tmp = params_file[bkg]['evt']
+
+    # X_train.groupby('process')['wt'] = X_train.groupby('process')['wt'] * (xs_tmp * lumi)/events_tmp
+
+    # print X_train
+
+    if opt.apply_selection:
+        X_fold1.to_hdf('data/dataset_fold1_cpsm_{}_{}.hdf5' # odd event numbers
+            .format(opt.channel, opt.sig_sample),
+            key='X_fold1',
+            mode='w')
+        X_fold2.to_hdf('data/dataset_fold2_cpsm_{}_{}.hdf5' # even event numbers
+            .format(opt.channel, opt.sig_sample),
+            key='X_fold2',
+            mode='w')
+
 else:
-    X.to_hdf('data/dataset_full_cpsm_{}.hdf5'
-        .format(opt.channel),
-        key='X',
-        mode='w')
+    if opt.apply_selection:
+        X.to_hdf('data/dataset_cpsm_{}_{}.hdf5'
+            .format(opt.channel, opt.sig_sample),
+            key='X',
+            mode='w')
+    else:
+        X.to_hdf('data/dataset_full_cpsm_{}.hdf5'
+            .format(opt.channel),
+            key='X',
+            mode='w')

@@ -1,3 +1,6 @@
+# Usage:
+#     python train.py --sig_sample powheg --mode xgb_multi --channel tt
+
 import random
 import uproot
 import ROOT
@@ -37,13 +40,13 @@ import fit_functions as ff
 parser = argparse.ArgumentParser()
 
 parser.add_argument('--mode', action='store', default='sklearn_ttsplit',
-        help='training procedure (default train_test_split)')
+    help='training procedure (default train_test_split)')
 parser.add_argument('--channel', action='store', default='mt',
-        help='channels to train on')
+    help='channels to train on')
 parser.add_argument('--sig_sample', action='store', default='powheg',
-        help='''ggh signal sample to run on (default powheg)\n
-        choose powheg for n_jets < 2 | (n_jets >= 2 & mjj < 300)\n
-        choose JHU for n_jets >=2 & mjj > 300''')
+    help='''ggh signal sample to run on (default powheg)\n
+    choose powheg for n_jets < 2 | (n_jets >= 2 & mjj < 300)\n
+    choose JHU for n_jets >=2 & mjj > 300''')
 
 opt = parser.parse_args()
 
