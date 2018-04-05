@@ -1,3 +1,6 @@
+# Usage:
+#     python make_dataset.py -c --sig_sample powheg --mode xgb_multi --channel tt
+
 import random
 import uproot
 import ROOT
@@ -298,7 +301,7 @@ for bkg in bkg_files:
 
                 zl_tmp = bkg_tmp[
                     ((bkg_tmp['gen_match_1'] != 6) | (bkg_tmp['gen_match_2'] != 6))
-                    & ((bkg_tmp['gen_match_1'] != 5) | (bkg_tmp['gen_match_2'] != 5))
+                    & ((bkg_tmp['gen_match_1'] != 5) & (bkg_tmp['gen_match_2'] != 5))
                     ]
                 zl_tmp.reset_index(drop=True)
                 zl_tmp['multi_class'] = 'zll' ## zl -- > zll
