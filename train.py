@@ -1,5 +1,5 @@
 # Usage:
-#     python train.py --sig_sample powheg --mode xgb_multi --channel tt
+#     python train.py --analysis cpsm --sig_sample powheg --mode xgb_multi --channel tt
 
 import random
 import uproot
@@ -47,10 +47,14 @@ parser.add_argument('--sig_sample', action='store', default='powheg',
     help='''ggh signal sample to run on (default powheg)\n
     choose powheg for n_jets < 2 | (n_jets >= 2 & mjj < 300)\n
     choose JHU for n_jets >=2 & mjj > 300''')
+parser.add_argument('--analysis', action='store', default='cpsm',
+    dest='analysis', help='what analysis to make dataset for (default cpsm)')
 
 opt = parser.parse_args()
 
-train_data = pd.read_hdf('data/dataset_cpsm_{}_{}.hdf5'.format(opt.channel, opt.sig_sample))
+train_data = pd.read_hdf('data/dataset_{}_{}_{}.hdf5'
+        .format(opt.analysis, opt.channel, opt.sig_sample))
+
 print train_data.shape
 
 if opt.mode == 'sklearn_ttsplit':
@@ -71,5 +75,5 @@ if opt.mode == 'keras_multi':
 
 if opt.mode == 'xgb_multi':
 
-    ff.fit_multiclass_ttsplit(train_data, opt.channel, opt.sig_sample)
+    ff.fit_multiclass_ttsplit(train_data, opt.analysis, opt.channel, opt.sig_sample)
 

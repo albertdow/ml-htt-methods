@@ -1,5 +1,5 @@
 # Usage:
-#     python application.py --sys --sig_sample powheg --mode xgb_multi --channel tt
+#     python application.py --sys --analysis cpsm--sig_sample powheg --mode xgb_multi --channel tt --score_name Apr05
 
 import random
 import uproot
@@ -51,6 +51,10 @@ parser.add_argument('--sig_sample', action='store', default='powheg',
         choose JHU for n_jets >=2 & mjj > 300''')
 parser.add_argument('--sys', action='store_true', default=False,
         dest='do_systematics', help='for writing score for all systematics')
+parser.add_argument('--score_name', action='store', default='Apr05',
+        dest='score_name', help='name of score and category, usually date of training')
+parser.add_argument('--analysis', action='store', default='cpsm',
+        dest='analysis', help='what analysis to make dataset for (default cpsm)')
 
 opt = parser.parse_args()
 
@@ -249,7 +253,7 @@ for sig in sig_files:
     sig_tmp['deta'] = np.abs(sig_tmp['eta_1'] - sig_tmp['eta_2'])
     sig_tmp = sig_tmp.drop(['wt', 'multi_class'], axis=1)
 
-    ff.write_score_multi(sig_tmp, xgb_clf, opt.channel, opt.sig_sample, opt.do_systematics)
+    ff.write_score_multi(sig_tmp, xgb_clf, opt.channel, opt.sig_sample, opt.do_systematics, opt.score_name)
 
     del sig_tmp
 
@@ -298,7 +302,7 @@ for bkg in bkg_files:
 
 
 
-        ff.write_score_multi(bkg_tmp, xgb_clf, opt.channel, opt.sig_sample, opt.do_systematics)
+        ff.write_score_multi(bkg_tmp, xgb_clf, opt.channel, opt.sig_sample, opt.do_systematics, opt.score_name)
 
 
         del bkg_tmp
@@ -342,7 +346,7 @@ for data in data_files:
     data_tmp['deta'] = np.abs(data_tmp['eta_1'] - data_tmp['eta_2'])
     data_tmp = data_tmp.drop(['wt', 'multi_class'], axis=1)
 
-    ff.write_score_multi(data_tmp, xgb_clf, opt.channel, opt.sig_sample, opt.do_systematics)
+    ff.write_score_multi(data_tmp, xgb_clf, opt.channel, opt.sig_sample, opt.do_systematics, opt.score_name)
 
     del data_tmp
 

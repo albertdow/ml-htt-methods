@@ -1,5 +1,5 @@
 # Usage:
-#     python make_dataset.py -c --sig_sample powheg --mode xgb_multi --channel tt
+#     python make_dataset.py -c --analysis cpsm --sig_sample powheg --mode xgb_multi --channel tt
 
 import random
 import uproot
@@ -50,8 +50,8 @@ parser.add_argument('--sig_sample', action='store', default='powheg',
     choose JHU for n_jets >=2 & mjj > 300''')
 parser.add_argument('--kfold', action='store_true', default=False,
     dest='kfold', help='apply kfold on dataset (default False)')
-parser.add_argument('--analysis', action='store', default='cp',
-    dest='analysis', help='what analysis to make dataset for (default cp)')
+parser.add_argument('--analysis', action='store', default='cpsm',
+    dest='analysis', help='what analysis to make dataset for (default cpsm)')
 
 
 opt = parser.parse_args()
@@ -116,7 +116,7 @@ elif opt.channel == 'em':
 # coming from the xsection
 
 if opt.mode in ['keras_multi', 'xgb_multi']:
-    if opt.analysis == 'cp':
+    if opt.analysis == 'cpsm':
         features = [
             'pt_1', 'pt_2', 'eta_1', 'eta_2', 'dphi',
             'mt_1', 'mt_2', 'mt_lep',
@@ -128,6 +128,7 @@ if opt.mode in ['keras_multi', 'xgb_multi']:
             'wt', # for training/validation weights
             'gen_match_1', 'gen_match_2', # for splitting DY into separate processes
             'event',
+            ]
 
     if opt.analysis == 'sm':
         features = [
@@ -146,7 +147,7 @@ if opt.mode in ['keras_multi', 'xgb_multi']:
             'jpt_1', 'jeta_1', 'jphi_1',
             'jphi_2',
             'jdphi',
-        ]
+            ]
 else:
     features = [
             'pt_1', 'pt_2', 'eta_1', 'eta_2', 'dphi',
@@ -554,12 +555,12 @@ if opt.kfold:
 
 else:
     if opt.apply_selection:
-        X.to_hdf('data/dataset_cpsm_{}_{}.hdf5'
-            .format(opt.channel, opt.sig_sample),
+        X.to_hdf('data/dataset_{}_{}_{}.hdf5'
+            .format(opt.analysis, opt.channel, opt.sig_sample),
             key='X',
             mode='w')
     else:
-        X.to_hdf('data/dataset_full_cpsm_{}.hdf5'
-            .format(opt.channel),
+        X.to_hdf('data/dataset_full_{}.hdf5'
+            .format(opt.analysis, opt.channel),
             key='X',
             mode='w')

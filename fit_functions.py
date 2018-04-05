@@ -482,11 +482,14 @@ def fit_gbc_ttsplit(X, channel, sig_sample):
     return None
 
 
-def fit_multiclass_ttsplit(X, channel, sig_sample):
+def fit_multiclass_ttsplit(X, analysis, channel, sig_sample):
 
     # use 'wt_xs' as event weights
     # but calculate class weights for training
     # later using 'wt'
+
+    # actually using scaled weights straight
+    # because of better performance
     X_train,X_test, y_train,y_test,w_train,w_test  = train_test_split(
         X,
         X['multi_class'],
@@ -540,7 +543,10 @@ def fit_multiclass_ttsplit(X, channel, sig_sample):
         for key, value in class_weight_dict.iteritems():
         # print 'before: ',index, row
             if y_train[i] == key:
-                w_train.at[i] *= value
+                if key == 'ggh':
+                    w_train.at[i] *= value*1.1
+                else:
+                    w_train.at[i] *= value
                 # print 'after dividing by class_weight: ',index, row
 
 
@@ -646,16 +652,16 @@ def fit_multiclass_ttsplit(X, channel, sig_sample):
         if channel in ['tt','mt','et','em']:
             params = {
                     'objective':'multi:softprob',
-                    'max_depth':8,
+                    'max_depth':5,
                     # 'min_child_weight':1,
                     'learning_rate':0.025,
                     'silent':1,
                     # 'scale_pos_weight':ratio,
                     'n_estimators':100,
-                    # 'gamma':0.5,
+                    # 'gamma':3.0,
                     'subsample':0.9,
-                    'colsample_bytree':0.9,
-                    # 'max_delta_step':3,
+                    # 'colsample_bytree':0.9,
+                    # 'max_delta_step':10,
                     'nthread':-1,
                     'seed':123456
                     }
@@ -742,45 +748,9 @@ def fit_multiclass_ttsplit(X, channel, sig_sample):
     y_pred = xgb_clf.predict_proba(X_test)
     print 'highest proba: {},{},{}'.format(max(y_pred[0]),max(y_pred[1]),max(y_pred[2]))
 
-    # print y_pred
-    # proba_predict_train = xgb_clf.predict_proba(X_train)[:,1]
-    # proba_predict_test = xgb_clf.predict_proba(X_test)[:,1]
 
-    ## 15% of highest probablilty output
-
-    # Make predictions for s and b
-
-    ## SAVE FOR SKIP
-
-    # with open('fpr.pkl', 'w') as f:
-    #     pickle.dump(fpr, f)
-    # with open('tpr.pkl', 'w') as f:
-    #     pickle.dump(tpr, f)
-    # with open('auc.pkl', 'w') as f:
-    #     pickle.dump(auc, f)
-    # with open('X_train.pkl', 'w') as f:
-    #     pickle.dump(X_train, f)
-    # with open('y_train.pkl', 'w') as f:
-    #     pickle.dump(y_train, f)
-    # with open('X_test.pkl', 'w') as f:
-    #     pickle.dump(X_test, f)
-    # with open('y_test.pkl', 'w') as f:
-    #     pickle.dump(y_test, f)
-    # with open('w_test.pkl', 'w') as f:
-    #     pickle.dump(w_test, f)
-    # with open('w_train.pkl', 'w') as f:
-    #     pickle.dump(w_train, f)
-    with open('multi_{}_{}_xgb.pkl'.format(channel, sig_sample), 'w') as f:
+    with open('multi_{}_{}_{}_xgb.pkl'.format(analysis, channel, sig_sample), 'w') as f:
         pickle.dump(xgb_clf, f)
-
-
-#     auc = roc_auc_score(y_test, y_pred[:,1])
-#     print auc
-#     fpr, tpr, _ = roc_curve(y_test, y_pred[:,1])
-
-    # pf.plot_roc_curve(
-    #         fpr, tpr, auc,
-    #         'multi_{}_{}_roc.pdf'.format(channel, sig_sample))
 
     # Define these so that I can use plot_output()
     xg_train = xgb.DMatrix(
@@ -805,12 +775,12 @@ def fit_multiclass_ttsplit(X, channel, sig_sample):
     pf.plot_features(
             xgb_clf.booster(),
             'weight',
-            'multi_{}_{}_features_weight.pdf'.format(channel, sig_sample))
+            'multi_{}_{}_{}_features_weight.pdf'.format(analysis, channel, sig_sample))
 
     pf.plot_features(
             xgb_clf.booster(),
             'gain',
-            'multi_{}_{}_features_gain.pdf'.format(channel, sig_sample))
+            'multi_{}_{}_{}_features_gain.pdf'.format(analysis, channel, sig_sample))
 
 
     y_prediction = xgb_clf.predict(X_test)
@@ -819,13 +789,13 @@ def fit_multiclass_ttsplit(X, channel, sig_sample):
             y_test, y_prediction, w_test,
             # classes=['background', 'signal'],
             classes=list(encoder_test.classes_),
-            figname='multi_{}_{}_non-normalised_weights_cm.pdf'.format(channel, sig_sample),
+            figname='multi_{}_{}_{}_non-normalised_weights_cm.pdf'.format(analysis, channel, sig_sample),
             normalise=False)
 
     pf.plot_confusion_matrix(
             y_test, y_prediction, w_test,
             classes=list(encoder_test.classes_),
-            figname='multi_{}_{}_normalised_weights_cm.pdf'.format(channel, sig_sample),
+            figname='multi_{}_{}_{}_normalised_weights_cm.pdf'.format(analysis, channel, sig_sample),
             normalise=True)
 
     return None
@@ -1327,7 +1297,7 @@ def write_score(data, model, channel, doSystematics):
 
 
 
-def write_score_multi(data, model, channel, sig_sample, doSystematics):
+def write_score_multi(data, model, channel, sig_sample, doSystematics, name):
     ## START EDITING THIS
 
     path = '/vols/cms/akd116/Offline/output/SM/2018/Mar19' # nominal ntuples
@@ -1361,7 +1331,7 @@ def write_score_multi(data, model, channel, sig_sample, doSystematics):
         if len(data) > 0:
             # assign event to max score class
             # print model.predict_proba(value)
-            # print len(model.predict(value))
+            # print model.predict(value)
 
             for index, ls in enumerate(model.predict_proba(value)):
                 # print index
@@ -1377,11 +1347,11 @@ def write_score_multi(data, model, channel, sig_sample, doSystematics):
             cat = ''
 
         if sig_sample == 'powheg':
-            np_score.dtype = [('mva_score_Apr5_3_powheg', np.float32)]
-            cat.dtype = [('mva_cat_Apr5_3_powheg', np.int)]
+            np_score.dtype = [('mva_score_{}_powheg'.format(name), np.float32)]
+            cat.dtype = [('mva_cat_{}_powheg'.format(name), np.int)]
         elif sig_sample == 'JHU':
-            np_score.dtype = [('mva_score_Apr5_3_JHU', np.float32)]
-            cat.dtype = [('mva_cat_Apr5_3_JHU', np.int)]
+            np_score.dtype = [('mva_score_{}_JHU'.format(name), np.float32)]
+            cat.dtype = [('mva_cat_{}_JHU'.format(name), np.int)]
 
         array2root(
             np_score,
