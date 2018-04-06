@@ -1,5 +1,5 @@
 # Usage:
-#     python application.py --sys --analysis cpsm--sig_sample powheg --mode xgb_multi --channel tt --score_name Apr05
+#     python application.py --sys --analysis cpsm --sig_sample powheg --mode xgb_multi --channel tt --score_name Apr05_0
 
 import random
 import uproot
@@ -61,13 +61,13 @@ opt = parser.parse_args()
 
 ## Load model
 
-with open('multi_{}_{}_xgb.pkl'.format(opt.channel, opt.sig_sample), 'r') as f:
+with open('multi_{}_{}_{}_xgb.pkl'.format(opt.analysis, opt.channel, opt.sig_sample), 'r') as f:
     xgb_clf = pickle.load(f)
 
 
-print '\nPredicting score on {} channel with {} sig samples\n'.format(opt.channel, opt.sig_sample)
+print '\nPredicting and writing score on {} channel ntuples with {} trained model\n'.format(opt.channel, opt.sig_sample)
 sig_files = lf.load_files('./filelist/sig_files.dat')
-bkg_files = lf.load_files('./filelist/full_mc_files.dat')
+bkg_files = lf.load_files('./filelist/full_mc_{}_files.dat'.format(opt.analysis))
 data_files = lf.load_files('./filelist/{}_data_files.dat'.format(opt.channel))
 
 # this file contains information about the xsections, lumi and event numbers
@@ -82,7 +82,7 @@ if opt.channel == 'tt':
             'mva_olddm_loose_1', 'mva_olddm_loose_2',
             'antiele_1', 'antimu_1', 'antiele_2', 'antimu_2',
             'leptonveto', 'trg_doubletau',
-            'mjj',
+            # 'mjj',
             ]
 
 elif opt.channel == 'mt':
@@ -93,7 +93,7 @@ elif opt.channel == 'mt':
             'leptonveto',
             'trg_singlemuon', 'trg_mutaucross',
             'os',
-            'mjj'
+            # 'mjj'
             ]
 
 elif opt.channel == 'et':
@@ -104,7 +104,7 @@ elif opt.channel == 'et':
             'leptonveto',
             'trg_singleelectron',
             'os',
-            'mjj'
+            # 'mjj'
             ]
 
 elif opt.channel == 'em':
@@ -114,8 +114,10 @@ elif opt.channel == 'em':
             'leptonveto',
             'trg_muonelectron',
             'os',
-            'mjj'
+            # 'mjj'
             ]
+if opt.analysis == 'cpsm':
+    cut_features.append('mjj')
 
 # features to train on
 # apart from 'wt' - this is used for weights
@@ -123,24 +125,34 @@ elif opt.channel == 'em':
 # coming from the xsection
 
 if opt.mode in ['keras_multi', 'xgb_multi']:
+    if opt.analysis == 'cpsm':
+        features = [
+            'pt_1', 'pt_2', 'eta_1', 'eta_2', 'dphi',
+            'mt_1', 'mt_2', 'mt_lep',
+            'm_vis', 'm_sv', 'pt_tt', 'eta_tt',
+            'met', 'met_dphi_1', 'met_dphi_2',
+            'n_jets', 'n_bjets',
+            'pt_vis',
+            'phi_1', 'phi_2',
+            'wt', # for training/validation weights
+            ]
 
-    features = [
-        'pt_1', 'pt_2', 'eta_1', 'eta_2', 'dphi',
-        'mt_1', 'mt_2', 'mt_lep',
-        'm_vis', 'm_sv', 'pt_tt', 'eta_tt',
-        'met', 'met_dphi_1', 'met_dphi_2',
-        'n_jets', 'n_bjets',
-        'pt_vis',
-        'phi_1', 'phi_2',
-        'wt', # for training/validation weights
-        # 'gen_match_1', 'gen_match_2', # for splitting DY into separate processes
-
-        # add more features similar to KIT take tt for now
-        # 'mjj', 'jdeta',
-        # 'jpt_1', 'jeta_1', 'jphi_1',
-        # 'jphi_2',
-        # 'jdphi',
-        ]
+    if opt.analysis == 'sm':
+        features = [
+            'pt_1', 'pt_2', 'eta_1', 'eta_2', 'dphi',
+            'mt_1', 'mt_2', 'mt_lep',
+            'm_vis', 'm_sv', 'pt_tt', 'eta_tt',
+            'met', 'met_dphi_1', 'met_dphi_2',
+            'n_jets', 'n_bjets',
+            'pt_vis',
+            'phi_1', 'phi_2',
+            'wt', # for training/validation weights
+            # add more features similar to KIT take tt for now
+            'mjj', 'jdeta',
+            'jpt_1', 'jeta_1', 'jphi_1',
+            'jphi_2',
+            'jdphi',
+            ]
 else:
     features = [
             'pt_1', 'pt_2', 'eta_1', 'eta_2', 'dphi',
@@ -253,7 +265,7 @@ for sig in sig_files:
     sig_tmp['deta'] = np.abs(sig_tmp['eta_1'] - sig_tmp['eta_2'])
     sig_tmp = sig_tmp.drop(['wt', 'multi_class'], axis=1)
 
-    ff.write_score_multi(sig_tmp, xgb_clf, opt.channel, opt.sig_sample, opt.do_systematics, opt.score_name)
+    ff.write_score_multi(sig_tmp, xgb_clf, opt.analysis, opt.channel, opt.sig_sample, opt.do_systematics, opt.score_name)
 
     del sig_tmp
 
@@ -302,7 +314,7 @@ for bkg in bkg_files:
 
 
 
-        ff.write_score_multi(bkg_tmp, xgb_clf, opt.channel, opt.sig_sample, opt.do_systematics, opt.score_name)
+        ff.write_score_multi(bkg_tmp, xgb_clf, opt.analysis, opt.channel, opt.sig_sample, opt.do_systematics, opt.score_name)
 
 
         del bkg_tmp
@@ -346,7 +358,7 @@ for data in data_files:
     data_tmp['deta'] = np.abs(data_tmp['eta_1'] - data_tmp['eta_2'])
     data_tmp = data_tmp.drop(['wt', 'multi_class'], axis=1)
 
-    ff.write_score_multi(data_tmp, xgb_clf, opt.channel, opt.sig_sample, opt.do_systematics, opt.score_name)
+    ff.write_score_multi(data_tmp, xgb_clf, opt.analysis, opt.channel, opt.sig_sample, opt.do_systematics, opt.score_name)
 
     del data_tmp
 

@@ -75,7 +75,7 @@ if opt.channel == 'tt':
             'mva_olddm_loose_1', 'mva_olddm_loose_2',
             'antiele_1', 'antimu_1', 'antiele_2', 'antimu_2',
             'leptonveto', 'trg_doubletau',
-            'mjj',
+            # 'mjj',
             ]
 
 elif opt.channel == 'mt':
@@ -86,7 +86,7 @@ elif opt.channel == 'mt':
             'leptonveto',
             'trg_singlemuon', 'trg_mutaucross',
             'os',
-            'mjj'
+            # 'mjj'
             ]
 
 elif opt.channel == 'et':
@@ -97,7 +97,7 @@ elif opt.channel == 'et':
             'leptonveto',
             'trg_singleelectron',
             'os',
-            'mjj'
+            # 'mjj'
             ]
 
 elif opt.channel == 'em':
@@ -107,8 +107,10 @@ elif opt.channel == 'em':
             'leptonveto',
             'trg_muonelectron',
             'os',
-            'mjj'
+            # 'mjj'
             ]
+if opt.analysis == 'cpsm':
+    cut_features.append('mjj')
 
 # features to train on
 # apart from 'wt' - this is used for weights

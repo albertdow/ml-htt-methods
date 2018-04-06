@@ -1297,7 +1297,7 @@ def write_score(data, model, channel, doSystematics):
 
 
 
-def write_score_multi(data, model, channel, sig_sample, doSystematics, name):
+def write_score_multi(data, model, analysis, channel, sig_sample, doSystematics, name):
     ## START EDITING THIS
 
     path = '/vols/cms/akd116/Offline/output/SM/2018/Mar19' # nominal ntuples
@@ -1347,11 +1347,11 @@ def write_score_multi(data, model, channel, sig_sample, doSystematics, name):
             cat = ''
 
         if sig_sample == 'powheg':
-            np_score.dtype = [('mva_score_{}_powheg'.format(name), np.float32)]
-            cat.dtype = [('mva_cat_{}_powheg'.format(name), np.int)]
+            np_score.dtype = [('mva_score_{}_{}_powheg'.format(analysis, name), np.float32)]
+            cat.dtype = [('mva_cat_{}_{}_powheg'.format(analysis, name), np.int)]
         elif sig_sample == 'JHU':
-            np_score.dtype = [('mva_score_{}_JHU'.format(name), np.float32)]
-            cat.dtype = [('mva_cat_{}_JHU'.format(name), np.int)]
+            np_score.dtype = [('mva_score_{}_{}_JHU'.format(analysis, name), np.float32)]
+            cat.dtype = [('mva_cat_{}_{}_JHU'.format(analysis, name), np.int)]
 
         array2root(
             np_score,
