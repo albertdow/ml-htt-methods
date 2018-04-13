@@ -37,43 +37,50 @@ import load_functions as lf
 import fit_functions as ff
 
 
-parser = argparse.ArgumentParser()
+def parse_arguments():
+    parser = argparse.ArgumentParser()
 
-parser.add_argument('--mode', action='store', default='sklearn_ttsplit',
-    help='training procedure (default train_test_split)')
-parser.add_argument('--channel', action='store', default='mt',
-    help='channels to train on')
-parser.add_argument('--sig_sample', action='store', default='powheg',
-    help='''ggh signal sample to run on (default powheg)\n
-    choose powheg for n_jets < 2 | (n_jets >= 2 & mjj < 300)\n
-    choose JHU for n_jets >=2 & mjj > 300''')
-parser.add_argument('--analysis', action='store', default='cpsm',
-    dest='analysis', help='what analysis to make dataset for (default cpsm)')
+    parser.add_argument('--mode', action='store', default='sklearn_ttsplit',
+        help='training procedure (default train_test_split)')
+    parser.add_argument('--channel', action='store', default='mt',
+        help='channels to train on')
+    parser.add_argument('--sig_sample', action='store', default='powheg',
+        help='''ggh signal sample to run on (default powheg)\n
+        choose powheg for n_jets < 2 | (n_jets >= 2 & mjj < 300)\n
+        choose JHU for n_jets >=2 & mjj > 300''')
+    parser.add_argument('--analysis', action='store', default='cpsm',
+        dest='analysis', help='what analysis to make dataset for (default cpsm)')
 
-opt = parser.parse_args()
+    return parser.parse_args()
 
-train_data = pd.read_hdf('data/dataset_{}_{}_{}.hdf5'
-        .format(opt.analysis, opt.channel, opt.sig_sample))
+def main(opt):
 
-print train_data.shape
+    train_data = pd.read_hdf('data/dataset_{}_{}_{}.hdf5'
+            .format(opt.analysis, opt.channel, opt.sig_sample))
 
-if opt.mode == 'sklearn_ttsplit':
+    print train_data.shape
 
-    ff.fit_ttsplit(train_data, opt.channel, opt.sig_sample)
+    if opt.mode == 'sklearn_ttsplit':
 
-if opt.mode == 'sklearn_sssplit':
+        ff.fit_ttsplit(train_data, opt.channel, opt.sig_sample)
 
-    ff.fit_sssplit(train_data, 4, opt.channel, opt.sig_sample)
+    if opt.mode == 'sklearn_sssplit':
 
-if opt.mode == 'gbc_ttsplit':
+        ff.fit_sssplit(train_data, 4, opt.channel, opt.sig_sample)
 
-    ff.fit_gbc_ttsplit(train_data, opt.channel, opt.sig_sample)
+    if opt.mode == 'gbc_ttsplit':
 
-if opt.mode == 'keras_multi':
+        ff.fit_gbc_ttsplit(train_data, opt.channel, opt.sig_sample)
 
-    ff.fit_keras(train_data, opt.channel, opt.sig_sample)
+    if opt.mode == 'keras_multi':
 
-if opt.mode == 'xgb_multi':
+        ff.fit_keras(train_data, opt.channel, opt.sig_sample)
 
-    ff.fit_multiclass_ttsplit(train_data, opt.analysis, opt.channel, opt.sig_sample)
+    if opt.mode == 'xgb_multi':
+
+        ff.fit_multiclass_ttsplit(train_data, opt.analysis, opt.channel, opt.sig_sample)
+
+if __name__ == "__main__":
+    opt = parse_arguments()
+    main(opt)
 

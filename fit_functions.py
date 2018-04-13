@@ -494,7 +494,7 @@ def fit_multiclass_ttsplit(X, analysis, channel, sig_sample):
         X,
         X['multi_class'],
         X['wt_xs'],
-        test_size=0.30,
+        test_size=0.5,
         random_state=123456,
         )
 
@@ -544,7 +544,7 @@ def fit_multiclass_ttsplit(X, analysis, channel, sig_sample):
         # print 'before: ',index, row
             if y_train[i] == key:
                 if key == 'ggh':
-                    w_train.at[i] *= value*1.1
+                    w_train.at[i] *= value
                 else:
                     w_train.at[i] *= value
                 # print 'after dividing by class_weight: ',index, row
@@ -583,6 +583,9 @@ def fit_multiclass_ttsplit(X, analysis, channel, sig_sample):
         'wt', 'wt_xs', 'process', 'multi_class', 'class', 'event',
         'gen_match_1', 'gen_match_2'
         ], axis=1).reset_index(drop=True)
+
+    print X_train.shape
+    print X_test.shape
 
 
     ## standard scaler
@@ -637,13 +640,13 @@ def fit_multiclass_ttsplit(X, analysis, channel, sig_sample):
                     'objective':'multi:softprob',
                     'max_depth':8,
                     # 'min_child_weight':1,
-                    'learning_rate':0.025,
+                    'learning_rate':0.005,
                     'silent':1,
                     # 'scale_pos_weight':ratio,
-                    'n_estimators':100,
-                    # 'gamma':0.5,
-                    'subsample':0.9,
-                    'colsample_bytree':0.9,
+                    'n_estimators':500,
+                    'gamma':0,
+                    'subsample':0.8,
+                    'colsample_bytree':0.8,
                     # 'max_delta_step':3,
                     'nthread':-1,
                     'seed':123456
@@ -656,12 +659,12 @@ def fit_multiclass_ttsplit(X, analysis, channel, sig_sample):
                     # 'min_child_weight':1,
                     'learning_rate':0.025,
                     'silent':1,
-                    # 'scale_pos_weight':ratio,
-                    'n_estimators':100,
-                    # 'gamma':3.0,
-                    'subsample':0.9,
-                    # 'colsample_bytree':0.9,
-                    # 'max_delta_step':10,
+                    # 'scale_pos_weight':1,
+                    'n_estimators':300,
+                    'gamma':0,
+                    'subsample':0.8,
+                    'colsample_bytree':0.8,
+                    # 'max_delta_step':5,
                     'nthread':-1,
                     'seed':123456
                     }
@@ -725,7 +728,7 @@ def fit_multiclass_ttsplit(X, analysis, channel, sig_sample):
             sample_weight = w_train,
             early_stopping_rounds=10,
             eval_set=[(X_train, y_train, w_train), (X_test, y_test, w_test)],
-            eval_metric = ['mlogloss'],
+            eval_metric = ['rmse'],
             verbose=True
             )
 

@@ -18,15 +18,12 @@ def load_mc_ntuple(data, tree, branch, sig, channel, cut_feats, apply_cuts):
         for block in iterator:
             df_b = pd.DataFrame(block)
 
-            # if channel == 'tt':
-            #     df_b = df_b[(df_b['pt_1'] > 50)]
-
             if apply_cuts:
                 if channel == 'tt':
                     df_b = df_b[
                             (df_b['pt_1'] > 40)
-                            & (df_b['mva_olddm_medium_1'] > 0.5)
-                            & (df_b['mva_olddm_medium_2'] > 0.5)
+                            & (df_b['mva_olddm_tight_1'] > 0.5)
+                            & (df_b['mva_olddm_tight_2'] > 0.5)
                             & (df_b['antiele_1'] == True)
                             & (df_b['antimu_1'] == True)
                             & (df_b['antiele_2'] == True)
@@ -38,8 +35,8 @@ def load_mc_ntuple(data, tree, branch, sig, channel, cut_feats, apply_cuts):
                 elif channel == 'mt':
                     df_b = df_b[
                             (df_b['iso_1'] < 0.15)
-                            & (df_b['mt_1'] < 70)
-                            & (df_b['mva_olddm_medium_2'] > 0.5)
+                            & (df_b['mt_1'] < 40) # was 70 but use 40
+                            & (df_b['mva_olddm_tight_2'] > 0.5)
                             & (df_b['antiele_2'] == True)
                             & (df_b['antimu_2'] == True)
                             & (df_b['leptonveto'] == False)
@@ -51,8 +48,8 @@ def load_mc_ntuple(data, tree, branch, sig, channel, cut_feats, apply_cuts):
                 elif channel == 'et':
                     df_b = df_b[
                             (df_b['iso_1'] < 0.1)
-                            & (df_b['mt_1'] < 70)
-                            & (df_b['mva_olddm_medium_2'] > 0.5)
+                            & (df_b['mt_1'] < 40)
+                            & (df_b['mva_olddm_tight_2'] > 0.5)
                             & (df_b['antiele_2'] == True)
                             & (df_b['antimu_2'] == True)
                             & (df_b['leptonveto'] == False)
@@ -74,16 +71,18 @@ def load_mc_ntuple(data, tree, branch, sig, channel, cut_feats, apply_cuts):
                 ## TO SELECT THE SIGNAL SAMPLE ACCORDING TO
                 ## CUTS APPLIED RELATING TO n_jets AND mjj
                 if sig == 'powheg':
-                    df_b = df_b[
-                            (df_b['n_jets'] < 2)
-                            | ((df_b['n_jets'] >= 2)
-                                & (df_b['mjj'] < 300))
-                            ]
+                    df_b = df_b
+                    # df_b = df_b[
+                    #         (df_b['n_jets'] < 2)
+                    #         | ((df_b['n_jets'] >= 2)
+                    #             & (df_b['mjj'] < 300))
+                    #         ]
                 elif sig == 'JHU':
-                    df_b = df_b[
-                            ((df_b['n_jets'] >= 2)
-                            & (df_b['mjj'] > 300))
-                            ]
+                    df_b = df_b
+                    # df_b = df_b[
+                    #         ((df_b['n_jets'] >= 2)
+                    #         & (df_b['mjj'] > 300))
+                    #         ]
                 else:
                     assert ValueError('Signal sample not in ["powheg", "JHU"]')
 
@@ -111,18 +110,16 @@ def load_data_ntuple(data, tree, branch, sig, channel, cut_feats, apply_cuts):
     for block in iterator:
         df_b = pd.DataFrame(block)
 
-        # if channel == 'tt':
-        #     df_b = df_b[(df_b['pt_1'] > 50)]
         if apply_cuts:
             if channel == 'tt':
                 df_b = df_b[
                         (df_b['pt_1'] > 40)
                         & ((df_b['mva_olddm_loose_1'] > 0.5)
-                            & (df_b['mva_olddm_medium_1'] < 0.5)
-                            & (df_b['mva_olddm_loose_2'] > 0.5))
+                            & (df_b['mva_olddm_tight_1'] < 0.5)
+                            & (df_b['mva_olddm_medium_2'] > 0.5))
                         | ((df_b['mva_olddm_loose_2'] > 0.5)
-                            & (df_b['mva_olddm_medium_2'] < 0.5)
-                            & (df_b['mva_olddm_loose_1'] > 0.5))
+                            & (df_b['mva_olddm_tight_2'] < 0.5)
+                            & (df_b['mva_olddm_medium_1'] > 0.5))
                         & (df_b['antiele_1'] == True)
                         & (df_b['antimu_1'] == True)
                         & (df_b['antiele_2'] == True)
@@ -134,8 +131,8 @@ def load_data_ntuple(data, tree, branch, sig, channel, cut_feats, apply_cuts):
             elif channel == 'mt':
                 df_b = df_b[
                         (df_b['iso_1'] < 0.15)
-                        & (df_b['mt_1'] < 70)
-                        & (df_b['mva_olddm_medium_2'] > 0.5)
+                        & (df_b['mt_1'] < 40)
+                        & (df_b['mva_olddm_tight_2'] > 0.5)
                         & (df_b['antiele_2'] == True)
                         & (df_b['antimu_2'] == True)
                         & (df_b['leptonveto'] == False)
@@ -148,8 +145,8 @@ def load_data_ntuple(data, tree, branch, sig, channel, cut_feats, apply_cuts):
             elif channel == 'et':
                 df_b = df_b[
                         (df_b['iso_1'] < 0.1)
-                        & (df_b['mt_1'] < 70)
-                        & (df_b['mva_olddm_medium_2'] > 0.5)
+                        & (df_b['mt_1'] < 40)
+                        & (df_b['mva_olddm_tight_2'] > 0.5)
                         & (df_b['antiele_2'] == True)
                         & (df_b['antimu_2'] == True)
                         & (df_b['leptonveto'] == False)
@@ -173,16 +170,18 @@ def load_data_ntuple(data, tree, branch, sig, channel, cut_feats, apply_cuts):
             ## TO SELECT THE SIGNAL SAMPLE ACCORDING TO
             ## CUTS APPLIED RELATING TO n_jets AND mjj
             if sig == 'powheg':
-                df_b = df_b[
-                        (df_b['n_jets'] < 2)
-                        | ((df_b['n_jets'] >= 2)
-                            & (df_b['mjj'] < 300))
-                        ]
+                df_b = df_b
+                # df_b = df_b[
+                #         (df_b['n_jets'] < 2)
+                #         | ((df_b['n_jets'] >= 2)
+                #             & (df_b['mjj'] < 300))
+                #         ]
             elif sig == 'JHU':
-                df_b = df_b[
-                        ((df_b['n_jets'] >= 2)
-                        & (df_b['mjj'] > 300))
-                        ]
+                df_b = df_b
+                # df_b = df_b[
+                #         ((df_b['n_jets'] >= 2)
+                #         & (df_b['mjj'] > 300))
+                #         ]
             else:
                 assert ValueError('Signal sample not in ["powheg", "JHU"]')
 
