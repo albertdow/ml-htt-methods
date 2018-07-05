@@ -1,5 +1,5 @@
 # Usage:
-#     python make_dataset.py -c --analysis cpsm --sig_sample powheg --mode xgb_multi --channel tt
+#     python make_dataset.py -c --analysis cpsm --sig_sample powheg --split --mode xgb_multi --channel tt --kfold
 
 import random
 import uproot
@@ -51,8 +51,12 @@ def parse_arguments():
         choose JHU for n_jets >=2 & mjj > 300''')
     parser.add_argument('--kfold', action='store_true', default=False,
         dest='kfold', help='apply kfold on dataset (default False)')
+    parser.add_argument('--split', action='store_true', default=False,
+        dest='split', help='split by powheg/JHU sample (default False)')
     parser.add_argument('--analysis', action='store', default='cpsm',
         dest='analysis', help='what analysis to make dataset for (default cpsm)')
+    parser.add_argument('--use_jet_variables', action='store_true', default=False,
+        dest='use_jet_variables', help='whether to use jet variables or not')
 
 
     return parser.parse_args()
@@ -108,8 +112,8 @@ def main(opt):
                 'trg_muonelectron',
                 'os',
                 ]
-    if opt.analysis == 'cpsm':
-        cut_features.append('mjj')
+    # if opt.analysis == 'cpsm' and not opt.use_jet_variables:
+    #     cut_features.append('mjj')
 
     # features to train on
     # apart from 'wt' - this is used for weights
@@ -119,14 +123,25 @@ def main(opt):
     if opt.mode in ['keras_multi', 'xgb_multi']:
         if opt.analysis == 'cpsm':
             features = [
-                'pt_1', 'pt_2', 'eta_1', 'eta_2', 'dphi',
+                'pt_1', 'pt_2', 'eta_1', 'eta_2',
                 'mt_1', 'mt_2', 'mt_lep',
-                'm_vis', 'm_sv', 'pt_tt', 'eta_tt',
-                'met', 'met_dphi_1', 'met_dphi_2',
+                'm_vis', 'm_sv', 'pt_tt',# 'eta_tt',
+                'eta_h',
+                'met', #'met_dphi_1', 'met_dphi_2',
                 'n_jets', 'n_bjets',
                 'pt_vis',
-                'phi_1', 'phi_2',
+                'mjj','jdeta',
+                'jpt_1','jpt_2',
+                'dijetpt',
                 ]
+        if opt.channel == 'em':
+            features.append('pzeta')
+        if opt.use_jet_variables:
+            features.extend([
+                'mjj','jdeta', # use jet variables now
+                'jpt_1','jpt_2',
+                'dijetpt',
+                ])
 
         if opt.analysis == 'sm':
             if opt.channel == 'tt':
@@ -197,8 +212,6 @@ def main(opt):
                 'pt_vis',
                 # 'wt',
                 ]
-    # if opt.channel == 'em':
-    #     features.append('pzeta')
 
     # auxiliary features for preselection
     features.extend((
@@ -208,17 +221,11 @@ def main(opt):
             ))
 
 
-    if opt.channel in ['em','et','mt']:
+    if opt.sig_sample == 'powheg' and opt.channel in ['et','mt']:
         class_dict = {
             'ggh': ['GluGluToHToTauTau_M-125',
-                'GluGluH2JetsToTauTau_M125_CPmixing_maxmix',
-                'GluGluH2JetsToTauTau_M125_CPmixing_sm',
-                'GluGluH2JetsToTauTau_M125_CPmixing_pseudoscalar'],
-            'qqh': ['VBFHToTauTau_M-125',
-                'VBFHToWWTo2L2Nu_M-125',
-                'VBFHiggs0Mf05ph0_M-125',
-                'VBFHiggs0M_M-125',
-                'VBFHiggs0PM_M-125'],
+                'GluGluH2JetsToTauTau_M125_CPmixing_sm'],
+            'qqh': ['VBFHToTauTau_M-125'],
             'dy': ['DYJetsToLL_M-10-50-LO',
                 'DY1JetsToLL-LO',
                 'DY2JetsToLL-LO',
@@ -226,7 +233,7 @@ def main(opt):
                 'DY4JetsToLL-LO',
                 'DYJetsToLL-LO-ext1',
                 'DYJetsToLL-LO-ext2'],
-            'w': [ 'W1JetsToLNu-LO',
+            'fake': ['W1JetsToLNu-LO',
                 'W2JetsToLNu-LO-ext',
                 'W2JetsToLNu-LO',
                 'W3JetsToLNu-LO-ext',
@@ -234,17 +241,8 @@ def main(opt):
                 'W4JetsToLNu-LO-ext1',
                 'W4JetsToLNu-LO-ext2',
                 'W4JetsToLNu-LO',
-                'WGToLNuG-ext',
-                'WGToLNuG',
-                'WGstarToLNuEE',
-                'WGstarToLNuMuMu',
                 'WJetsToLNu-LO-ext',
-                'WJetsToLNu-LO'],
-            'tt': ['TT'],
-            'qcd': ['TauB','TauC',
-                'TauD','TauE',
-                'TauF','TauG',
-                'TauHv2','TauHv3',
+                'WJetsToLNu-LO',
                 'SingleMuonB','SingleMuonC',
                 'SingleMuonD','SingleMuonE',
                 'SingleMuonF','SingleMuonG',
@@ -252,36 +250,78 @@ def main(opt):
                 'SingleElectronB','SingleElectronC',
                 'SingleElectronD','SingleElectronE',
                 'SingleElectronF','SingleElectronG',
-                'SingleElectronHv2','SingleElectronHv3',
-                'MuonEGB','MuonEGC',
-                'MuonEGD','MuonEGE',
-                'MuonEGF','MuonEGG',
-                'MuonEGHv2','MuonEGHv3'],
+                'SingleElectronHv2','SingleElectronHv3',],
+            'tt': ['TT'],
             'misc': ['EWKWMinus2Jets_WToLNu-ext1','EWKWMinus2Jets_WToLNu-ext2',
                 'EWKWMinus2Jets_WToLNu','EWKWPlus2Jets_WToLNu-ext1',
                 'EWKWPlus2Jets_WToLNu-ext2','EWKWPlus2Jets_WToLNu',
                 'EWKZ2Jets_ZToLL-ext','EWKZ2Jets_ZToLL',
-                'EWKZ2Jets_ZToNuNu-ext','EWKZ2Jets_ZToNuNu',
                 'WWTo1L1Nu2Q','WZJToLLLNu',
                 'WZTo1L1Nu2Q','WZTo1L3Nu',
                 'VVTo2L2Nu-ext1','VVTo2L2Nu',
                 'WZTo2L2Q','ZZTo2L2Q','ZZTo4L-amcat',
                 'GluGluHToWWTo2L2Nu_M-125','ZHToTauTau_M-125',
                 'T-tW','T-t','Tbar-tW','Tbar-t',
-                'WminusHToTauTau_M-125','WplusHToTauTau_M-125'],
+                'WminusHToTauTau_M-125','WplusHToTauTau_M-125',
+                'WGToLNuG-ext',
+                'WGToLNuG',
+                'WGstarToLNuEE',
+                'WGstarToLNuMuMu',
+                'VBFHToWWTo2L2Nu_M-125',
+                ],
+            }
+    if opt.sig_sample == 'powheg' and opt.channel in ['em']:
+        class_dict = {
+            'ggh': ['GluGluToHToTauTau_M-125',
+                'GluGluH2JetsToTauTau_M125_CPmixing_sm'],
+            'qqh': ['VBFHToTauTau_M-125'],
+            'dy': ['DYJetsToLL_M-10-50-LO',
+                'DY1JetsToLL-LO',
+                'DY2JetsToLL-LO',
+                'DY3JetsToLL-LO',
+                'DY4JetsToLL-LO',
+                'DYJetsToLL-LO-ext1',
+                'DYJetsToLL-LO-ext2'],
+            'qcd': ['MuonEGB','MuonEGC',
+                'MuonEGD','MuonEGE',
+                'MuonEGF','MuonEGG',
+                'MuonEGHv2','MuonEGHv3'],
+            'tt': ['TT'],
+            'misc': ['EWKWMinus2Jets_WToLNu-ext1','EWKWMinus2Jets_WToLNu-ext2',
+                'EWKWMinus2Jets_WToLNu','EWKWPlus2Jets_WToLNu-ext1',
+                'EWKWPlus2Jets_WToLNu-ext2','EWKWPlus2Jets_WToLNu',
+                'EWKZ2Jets_ZToLL-ext','EWKZ2Jets_ZToLL',
+                'WWTo1L1Nu2Q','WZJToLLLNu',
+                'WZTo1L1Nu2Q','WZTo1L3Nu',
+                'VVTo2L2Nu-ext1','VVTo2L2Nu',
+                'WZTo2L2Q','ZZTo2L2Q','ZZTo4L-amcat',
+                'GluGluHToWWTo2L2Nu_M-125','ZHToTauTau_M-125',
+                'T-tW','T-t','Tbar-tW','Tbar-t',
+                'WminusHToTauTau_M-125','WplusHToTauTau_M-125',
+                'WGToLNuG-ext',
+                'WGToLNuG',
+                'WGstarToLNuEE',
+                'WGstarToLNuMuMu',
+                'VBFHToWWTo2L2Nu_M-125',
+                # w
+                'W1JetsToLNu-LO',
+                'W2JetsToLNu-LO-ext',
+                'W2JetsToLNu-LO',
+                'W3JetsToLNu-LO-ext',
+                'W3JetsToLNu-LO',
+                'W4JetsToLNu-LO-ext1',
+                'W4JetsToLNu-LO-ext2',
+                'W4JetsToLNu-LO',
+                'WJetsToLNu-LO-ext',
+                'WJetsToLNu-LO',
+                ]
             }
 
     if opt.channel == 'tt':
         class_dict = {
             'ggh': ['GluGluToHToTauTau_M-125',
-                'GluGluH2JetsToTauTau_M125_CPmixing_maxmix',
-                'GluGluH2JetsToTauTau_M125_CPmixing_sm',
-                'GluGluH2JetsToTauTau_M125_CPmixing_pseudoscalar'],
-            'qqh': ['VBFHToTauTau_M-125',
-                'VBFHToWWTo2L2Nu_M-125',
-                'VBFHiggs0Mf05ph0_M-125',
-                'VBFHiggs0M_M-125',
-                'VBFHiggs0PM_M-125'],
+                'GluGluH2JetsToTauTau_M125_CPmixing_sm'],
+            'qqh': ['VBFHToTauTau_M-125'],
             'dy': ['DYJetsToLL_M-10-50-LO',
                 'DY1JetsToLL-LO',
                 'DY2JetsToLL-LO',
@@ -309,7 +349,6 @@ def main(opt):
                 'EWKWMinus2Jets_WToLNu','EWKWPlus2Jets_WToLNu-ext1',
                 'EWKWPlus2Jets_WToLNu-ext2','EWKWPlus2Jets_WToLNu',
                 'EWKZ2Jets_ZToLL-ext','EWKZ2Jets_ZToLL',
-                'EWKZ2Jets_ZToNuNu-ext','EWKZ2Jets_ZToNuNu',
                 'WWTo1L1Nu2Q','WZJToLLLNu',
                 'WZTo1L1Nu2Q','WZTo1L3Nu',
                 'VVTo2L2Nu-ext1','VVTo2L2Nu',
@@ -324,12 +363,126 @@ def main(opt):
                 'WJetsToLNu-LO-ext','WJetsToLNu-LO','WminusHToTauTau_M-125',
                 'WplusHToTauTau_M-125',
                 # tt
-                'TT']
+                'TT',
+                # vbf bkg
+                'VBFHToWWTo2L2Nu_M-125',
+                ]
             }
 
+    if opt.sig_sample == 'JHU':
+        if opt.channel in ['mt','et']:
+            class_dict = {
+                'ggh': ['GluGluToHToTauTau_M-125',
+                    'GluGluH2JetsToTauTau_M125_CPmixing_sm'],
+                'qqh': ['VBFHToTauTau_M-125'],
+                'dy': ['DYJetsToLL_M-10-50-LO',
+                    'DY1JetsToLL-LO',
+                    'DY2JetsToLL-LO',
+                    'DY3JetsToLL-LO',
+                    'DY4JetsToLL-LO',
+                    'DYJetsToLL-LO-ext1',
+                    'DYJetsToLL-LO-ext2'],
+
+                'fake': ['TauB','TauC',
+                    'TauD','TauE',
+                    'TauF','TauG',
+                    'TauHv2','TauHv3',
+                    'SingleMuonB','SingleMuonC',
+                    'SingleMuonD','SingleMuonE',
+                    'SingleMuonF','SingleMuonG',
+                    'SingleMuonHv2','SingleMuonHv3',
+                    'SingleElectronB','SingleElectronC',
+                    'SingleElectronD','SingleElectronE',
+                    'SingleElectronF','SingleElectronG',
+                    'SingleElectronHv2','SingleElectronHv3',
+                    'MuonEGB','MuonEGC',
+                    'MuonEGD','MuonEGE',
+                    'MuonEGF','MuonEGG',
+                    'MuonEGHv2','MuonEGHv3',
+                    'W1JetsToLNu-LO',
+                    'W2JetsToLNu-LO-ext',
+                    'W2JetsToLNu-LO',
+                    'W3JetsToLNu-LO-ext',
+                    'W3JetsToLNu-LO',
+                    'W4JetsToLNu-LO-ext1',
+                    'W4JetsToLNu-LO-ext2',
+                    'W4JetsToLNu-LO',
+                    'WJetsToLNu-LO-ext',
+                    'WJetsToLNu-LO',
+                    ],
+                'misc': ['EWKWMinus2Jets_WToLNu-ext1','EWKWMinus2Jets_WToLNu-ext2',
+                    'EWKWMinus2Jets_WToLNu','EWKWPlus2Jets_WToLNu-ext1',
+                    'EWKWPlus2Jets_WToLNu-ext2','EWKWPlus2Jets_WToLNu',
+                    'EWKZ2Jets_ZToLL-ext','EWKZ2Jets_ZToLL',
+                    'WWTo1L1Nu2Q','WZJToLLLNu',
+                    'WZTo1L1Nu2Q','WZTo1L3Nu',
+                    'VVTo2L2Nu-ext1','VVTo2L2Nu',
+                    'WZTo2L2Q','ZZTo2L2Q','ZZTo4L-amcat',
+                    'GluGluHToWWTo2L2Nu_M-125','ZHToTauTau_M-125',
+                    'T-tW','T-t','Tbar-tW','Tbar-t',
+                    'WminusHToTauTau_M-125','WplusHToTauTau_M-125',
+                    'WGToLNuG-ext',
+                    'WGToLNuG',
+                    'WGstarToLNuEE',
+                    'WGstarToLNuMuMu',
+                    # vbf bkg
+                    'VBFHToWWTo2L2Nu_M-125',
+                    ],
+                }
+        if opt.channel in ['em']:
+            class_dict = {
+                'ggh': ['GluGluToHToTauTau_M-125',
+                    'GluGluH2JetsToTauTau_M125_CPmixing_sm'],
+                'qqh': ['VBFHToTauTau_M-125'],
+                'dy': ['DYJetsToLL_M-10-50-LO',
+                    'DY1JetsToLL-LO',
+                    'DY2JetsToLL-LO',
+                    'DY3JetsToLL-LO',
+                    'DY4JetsToLL-LO',
+                    'DYJetsToLL-LO-ext1',
+                    'DYJetsToLL-LO-ext2'],
+                'tt': ['TT'],
+                'qcd': [
+                    'MuonEGB','MuonEGC',
+                    'MuonEGD','MuonEGE',
+                    'MuonEGF','MuonEGG',
+                    'MuonEGHv2','MuonEGHv3'],
+                'misc': ['EWKWMinus2Jets_WToLNu-ext1','EWKWMinus2Jets_WToLNu-ext2',
+                    'EWKWMinus2Jets_WToLNu','EWKWPlus2Jets_WToLNu-ext1',
+                    'EWKWPlus2Jets_WToLNu-ext2','EWKWPlus2Jets_WToLNu',
+                    'EWKZ2Jets_ZToLL-ext','EWKZ2Jets_ZToLL',
+                    'WWTo1L1Nu2Q','WZJToLLLNu',
+                    'WZTo1L1Nu2Q','WZTo1L3Nu',
+                    'T-tW','T-t','Tbar-tW','Tbar-t',
+                    'VVTo2L2Nu-ext1','VVTo2L2Nu',
+                    'WZTo2L2Q','ZZTo2L2Q','ZZTo4L-amcat',
+                    'GluGluHToWWTo2L2Nu_M-125','ZHToTauTau_M-125',
+                    'WminusHToTauTau_M-125','WplusHToTauTau_M-125',
+                    'WGToLNuG-ext',
+                    'WGToLNuG',
+                    'WGstarToLNuEE',
+                    'WGstarToLNuMuMu',
+                    # w
+                    'W1JetsToLNu-LO',
+                    'W2JetsToLNu-LO-ext',
+                    'W2JetsToLNu-LO',
+                    'W3JetsToLNu-LO-ext',
+                    'W3JetsToLNu-LO',
+                    'W4JetsToLNu-LO-ext1',
+                    'W4JetsToLNu-LO-ext2',
+                    'W4JetsToLNu-LO',
+                    'WJetsToLNu-LO-ext',
+                    'WJetsToLNu-LO',
+                    # vbf bkg
+                    'VBFHToWWTo2L2Nu_M-125',
+                    ],
+                }
 
     # directory of the files (usually /vols/cms/)
-    path = '/vols/cms/akd116/Offline/output/SM/2018/Mar19'
+    # path = '/vols/cms/akd116/Offline/output/SM/2018/Mar19'
+    # path = '/vols/cms/akd116/Offline/output/SM/2018/Apr24_1'
+    # path = '/vols/cms/akd116/Offline/output/SM/2018/May17_2'
+    path = '/vols/cms/akd116/Offline/output/SM/2018/Jun22_2016_Danny'
 
     ggh = []
     for sig in sig_files:
@@ -341,7 +494,8 @@ def main(opt):
                 opt.sig_sample,
                 opt.channel,
                 cut_features,
-                apply_cuts=opt.apply_selection
+                apply_cuts=opt.apply_selection,
+                split_by_sample=opt.split
                 )
         ## need to multiply event weight by
         ## (XS * Lumi) / #events
@@ -375,7 +529,8 @@ def main(opt):
                 opt.sig_sample,
                 opt.channel,
                 cut_features,
-                apply_cuts=opt.apply_selection
+                apply_cuts=opt.apply_selection,
+                split_by_sample=opt.split
                 )
         if opt.mode in ['keras_multi', 'xgb_multi'] and bkg in [
             'DYJetsToLL_M-10-50-LO','DY1JetsToLL-LO','DY2JetsToLL-LO',
@@ -386,6 +541,16 @@ def main(opt):
             zl_tmp = pd.DataFrame()
             zj_tmp = pd.DataFrame()
             zll_tmp = pd.DataFrame()
+
+        if opt.channel in ['et','mt'] and opt.mode in ['keras_multi', 'xgb_multi'] and bkg in ['TT']:
+
+            ttt_tmp = pd.DataFrame()
+            ttj_tmp = pd.DataFrame()
+
+        if opt.channel in ['et','mt'] and opt.mode in ['keras_multi', 'xgb_multi'] and bkg in ['VVTo2L2Nu-ext1','VVTo2L2Nu',]:
+
+            vvt_tmp = pd.DataFrame()
+            vvj_tmp = pd.DataFrame()
 
         ## need to multiply event weight by
         ## (XS * Lumi) / #events
@@ -434,12 +599,14 @@ def main(opt):
 
                     zl_tmp = bkg_tmp[(bkg_tmp['gen_match_2'] != 6) & (bkg_tmp['gen_match_2'] != 5)]
                     zl_tmp.reset_index(drop=True)
-                    zl_tmp['multi_class'] = 'zll' ## zl --> zll
-
+                    if opt.sig_sample == 'powheg':
+                        zl_tmp['multi_class'] = 'zll' ## zl --> zll
+                    else:
+                        zl_tmp['multi_class'] = 'misc' ## zl --> misc
 
                     zj_tmp = bkg_tmp[(bkg_tmp['gen_match_2'] == 6)]
                     zj_tmp.reset_index(drop=True)
-                    zj_tmp['multi_class'] = 'misc' ## zj --> misc
+                    zj_tmp['multi_class'] = 'fake' ## zj --> fake
 
 
                 if opt.channel == 'em':
@@ -450,17 +617,37 @@ def main(opt):
 
                     zll_tmp = bkg_tmp[(bkg_tmp['gen_match_1'] < 3) | (bkg_tmp['gen_match_2'] < 4)]
                     zll_tmp.reset_index(drop=True)
-                    zll_tmp['multi_class'] = 'zll'
-
+                    zll_tmp['multi_class'] = 'misc'
 
 
                 for zsplit in [ztt_tmp, zl_tmp, zj_tmp, zll_tmp]:
                     bkgs_tmp.append(zsplit)
 
+            elif opt.channel in ['et','mt'] and opt.mode in ['keras_multi', 'xgb_multi'] and bkg in ['TT']:
+                ttt_tmp = bkg_tmp[(bkg_tmp['gen_match_2'] == 5)]
+                ttt_tmp.reset_index(drop=True)
+                ttt_tmp['multi_class'] = 'tt'
 
+                ttj_tmp = bkg_tmp[(bkg_tmp['gen_match_2'] != 5)]
+                ttj_tmp.reset_index(drop=True)
+                ttj_tmp['multi_class'] = 'fake'
+
+                for fake_split in [ttt_tmp, ttj_tmp,]:
+                    bkgs_tmp.append(fake_split)
+
+            elif opt.channel in ['et','mt'] and opt.mode in ['keras_multi', 'xgb_multi'] and bkg in ['VVTo2L2Nu-ext1','VVTo2L2Nu',]:
+                vvt_tmp = bkg_tmp[(bkg_tmp['gen_match_2'] == 5)]
+                vvt_tmp.reset_index(drop=True)
+                vvt_tmp['multi_class'] = 'misc'
+
+                vvj_tmp = bkg_tmp[(bkg_tmp['gen_match_2'] != 5)]
+                vvj_tmp.reset_index(drop=True)
+                vvj_tmp['multi_class'] = 'fake'
+
+                for fake_split in [vvt_tmp, vvj_tmp]:
+                    bkgs_tmp.append(fake_split)
             else:
                 bkgs_tmp.append(bkg_tmp)
-
 
 
     bkgs = pd.concat(bkgs_tmp, ignore_index=True)
@@ -477,7 +664,8 @@ def main(opt):
                 opt.sig_sample,
                 opt.channel,
                 cut_features,
-                apply_cuts=opt.apply_selection
+                apply_cuts=opt.apply_selection,
+                split_by_sample=opt.split
                 )
 
         data_tmp['process'] = data
@@ -511,6 +699,7 @@ def main(opt):
     #         'bkgs_{}_{}_correlation_matrix.pdf'.format(opt.channel, opt.sig_sample))
 
 
+
     ## for ggh vs rest discrimation
     if opt.mode not in ['keras_multi','xgb_multi']:
         y_sig = pd.DataFrame(np.ones(ggh.shape[0]))
@@ -520,6 +709,7 @@ def main(opt):
 
 
     X = pd.concat([ggh, bkgs])
+    print X
     # X['deta'] = np.abs(X['eta_1'] - X['eta_2'])
     # X['class'] = y.values
 
@@ -528,7 +718,14 @@ def main(opt):
 
 
     # randomise the order of events
-    X = X.sample(frac=1).reset_index(drop=True)
+    # print X[(X.multi_class == 'ggh')]
+
+    X = X.sample(
+            frac=1,
+            random_state=123456,
+            ).reset_index(drop=True)
+
+    # print X[(X.multi_class == 'ggh')]
 
 
     ## divide datasets
@@ -543,11 +740,11 @@ def main(opt):
 
 
         if opt.apply_selection:
-            X_fold1.to_hdf('data/dataset_fold1_{}_{}_{}.hdf5' # odd event numbers
+            X_fold1.to_hdf('data_Jun22Danny/dataset_fold1_{}_{}_{}.hdf5' # odd event numbers
                 .format(opt.analysis, opt.channel, opt.sig_sample),
                 key='X_fold1',
                 mode='w')
-            X_fold0.to_hdf('data/dataset_fold0_{}_{}_{}.hdf5' # even event numbers
+            X_fold0.to_hdf('data_Jun22Danny/dataset_fold0_{}_{}_{}.hdf5' # even event numbers
                 .format(opt.analysis, opt.channel, opt.sig_sample),
                 key='X_fold0',
                 mode='w')
@@ -559,7 +756,7 @@ def main(opt):
                 key='X',
                 mode='w')
         else:
-            X.to_hdf('data/dataset_full_{}.hdf5'
+            X.to_hdf('data/dataset_full_{}_{}.hdf5'
                 .format(opt.analysis, opt.channel),
                 key='X',
                 mode='w')
