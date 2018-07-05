@@ -3,7 +3,7 @@ import os
 import pandas as pd
 import numpy as np
 
-def load_mc_ntuple(data, tree, branch, sig, channel, cut_feats, apply_cuts):
+def load_mc_ntuple(data, tree, branch, sig, channel, cut_feats, apply_cuts, split_by_sample):
     # LOAD MC NTUPLES AND APPLY BASELINE CUTS BY CHANNEL
     # need to do something for when df too large..
 
@@ -70,21 +70,22 @@ def load_mc_ntuple(data, tree, branch, sig, channel, cut_feats, apply_cuts):
 
                 ## TO SELECT THE SIGNAL SAMPLE ACCORDING TO
                 ## CUTS APPLIED RELATING TO n_jets AND mjj
-                if sig == 'powheg':
+                if not split_by_sample:
                     df_b = df_b
-                    # df_b = df_b[
-                    #         (df_b['n_jets'] < 2)
-                    #         | ((df_b['n_jets'] >= 2)
-                    #             & (df_b['mjj'] < 300))
-                    #         ]
-                elif sig == 'JHU':
-                    df_b = df_b
-                    # df_b = df_b[
-                    #         ((df_b['n_jets'] >= 2)
-                    #         & (df_b['mjj'] > 300))
-                    #         ]
                 else:
-                    assert ValueError('Signal sample not in ["powheg", "JHU"]')
+                    if sig == 'powheg':
+                            df_b = df_b[
+                                    (df_b['n_jets'] < 2)
+                                    | ((df_b['n_jets'] >= 2)
+                                        & (df_b['mjj'] < 300))
+                                    ]
+                    elif sig == 'JHU':
+                            df_b = df_b[
+                                    ((df_b['n_jets'] >= 2)
+                                    & (df_b['mjj'] > 300))
+                                    ]
+                    else:
+                        assert ValueError('Signal sample not in ["powheg", "JHU"]')
 
                 df_b = df_b[(df_b['m_sv'] > 0)] ## SOME m_sv ARE MISSING
 
@@ -97,7 +98,7 @@ def load_mc_ntuple(data, tree, branch, sig, channel, cut_feats, apply_cuts):
 
     return df
 
-def load_data_ntuple(data, tree, branch, sig, channel, cut_feats, apply_cuts):
+def load_data_ntuple(data, tree, branch, sig, channel, cut_feats, apply_cuts, split_by_sample):
     ## THIS FUNCTION IS FOR READING IN SAME SIGN DATA (FOR mt, et, em CHANNELS)
     ## OR ANTIISOLATED (FOR tt CHANNEL) FOR THE QCD ESTIMATION
 
@@ -169,21 +170,22 @@ def load_data_ntuple(data, tree, branch, sig, channel, cut_feats, apply_cuts):
 
             ## TO SELECT THE SIGNAL SAMPLE ACCORDING TO
             ## CUTS APPLIED RELATING TO n_jets AND mjj
-            if sig == 'powheg':
+            if not split_by_sample:
                 df_b = df_b
-                # df_b = df_b[
-                #         (df_b['n_jets'] < 2)
-                #         | ((df_b['n_jets'] >= 2)
-                #             & (df_b['mjj'] < 300))
-                #         ]
-            elif sig == 'JHU':
-                df_b = df_b
-                # df_b = df_b[
-                #         ((df_b['n_jets'] >= 2)
-                #         & (df_b['mjj'] > 300))
-                #         ]
             else:
-                assert ValueError('Signal sample not in ["powheg", "JHU"]')
+                if sig == 'powheg':
+                        df_b = df_b[
+                                (df_b['n_jets'] < 2)
+                                | ((df_b['n_jets'] >= 2)
+                                    & (df_b['mjj'] < 300))
+                                ]
+                elif sig == 'JHU':
+                        df_b = df_b[
+                                ((df_b['n_jets'] >= 2)
+                                & (df_b['mjj'] > 300))
+                                ]
+                else:
+                    assert ValueError('Signal sample not in ["powheg", "JHU"]')
 
             df_b = df_b[(df_b['m_sv'] > 0)] ## SOME m_sv ARE MISSING
 

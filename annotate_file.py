@@ -103,7 +103,6 @@ def main(args, config, file_names):
         with open('{}/multi_fold0_cpsm_{}_{}_xgb.pkl'.format(args.model_folder, args.channel, args.training), 'r') as f:
             xgb_clf_fold0 = pickle.load(f)
         classifier = [xgb_clf_fold1, xgb_clf_fold0]
-        print classifier
         # preprocessing = [pickle.load(open(x, "rb")) for x in args.preprocessing]
 
         # Open input file
@@ -131,7 +130,7 @@ def main(args, config, file_names):
             if variable in ["dijetpt","eta_h"]:
                 values.append(array("f", [-9999]))
             if variable in ["eta_1","eta_2","jdeta","jpt_1","jpt_2","m_sv","m_vis","met",
-                    "met_dphi_1","met_dphi_2","mjj","mt_1","mt_2","mt_lep","pt_1","pt_2","pt_tt","pt_vis"]:
+                    "met_dphi_1","met_dphi_2","mjj","mt_1","mt_2","mt_lep","pt_1","pt_2","pt_tt","pt_vis","pzeta"]:
                 values.append(array("d", [-9999]))
             if variable in ["n_jets","n_bjets"]:
                 values.append(array("I", [0]))
@@ -164,14 +163,11 @@ def main(args, config, file_names):
 
             if n_jets >= 2 and mjj > 300 and m_sv > 0:
                 values_stacked = np.hstack(values).reshape(1, len(values))
-                print i_event
-                print values_stacked
                 # values_preprocessed = preprocessing[event % 2].transform(
                 #     values_stacked)
                 # response = classifier[event % 2].predict_proba(values_preprocessed)
                 response = classifier[event % 2].predict_proba(values_stacked)
                 response = np.squeeze(response)
-                print response
 
                 # Find max score and index
                 response_max_score[0] = -9999.0

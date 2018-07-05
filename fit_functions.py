@@ -971,7 +971,7 @@ def fit_multiclass_kfold(X, fold, analysis, channel, sig_sample):
                         'seed':123456
                         }
         if analysis == 'cpsm':
-            if channel in ['tt','mt','et']:
+            if channel in ['mt','et']:
                 params = {
                         'objective':'multi:softprob',
                         'max_depth':7,
@@ -980,15 +980,15 @@ def fit_multiclass_kfold(X, fold, analysis, channel, sig_sample):
                         'silent':1,
                         # 'scale_pos_weight':ratio,
                         'n_estimators':4000,
-                        # 'gamma':0,
+                        'gamma':5,
                         'subsample':0.9,
-                        # 'colsample_bytree':0.5,
+                        'colsample_bytree':0.6,
                         # 'max_delta_step':3,
                         'nthread':-1,
                         # 'missing':-9999,
                         'seed':123456
                         }
-            if channel in ['em']:
+            if channel in ['tt','em']:
                 params = {
                         'objective':'multi:softprob',
                         'max_depth':6,
@@ -996,10 +996,10 @@ def fit_multiclass_kfold(X, fold, analysis, channel, sig_sample):
                         'learning_rate':0.05,
                         'silent':1,
                         # 'scale_pos_weight':ratio,
-                        'n_estimators':100,
-                        # 'gamma':0,
+                        'n_estimators':2000,
+                        'gamma':5,
                         'subsample':0.9,
-                        # 'colsample_bytree':0.6,
+                        'colsample_bytree':0.6,
                         # 'max_delta_step':3,
                         'nthread':-1,
                         # 'missing':-9999,
@@ -1096,7 +1096,7 @@ def fit_multiclass_kfold(X, fold, analysis, channel, sig_sample):
                     X_train,
                     y_train,
                     sample_weight = w_train,
-                    early_stopping_rounds=20,
+                    early_stopping_rounds=50,
                     eval_set=[(X_train, y_train, w_train), (X_test, y_test, w_test)],
                     eval_metric = custom_mean_squared_error,
                     verbose=True

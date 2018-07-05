@@ -15,7 +15,7 @@ from sklearn.metrics import confusion_matrix
 
 def plot_signal_background(data1, data2, column,
                         channel, sig_sample,
-                        bins=10, **kwargs):
+                        bins=100, **kwargs):
 
     ## THIS FUNCTION IS FOR PLOTTING SIGNAL VS
     ## BACKGROUND FOR A SPECIFIC VARIABLE/COLUMN
@@ -24,19 +24,19 @@ def plot_signal_background(data1, data2, column,
     if 'alpha' not in kwargs:
         kwargs['alpha'] = 0.5
 
-    df1 = np.log(data1[column])
-    df2 = np.log(data2[column])
+    df1 = data1[column]
+    df2 = data2[column]
 
     fig, ax = plt.subplots()
-    # df1=df1.sample(4000, random_state=1234)
-    # df2=df2.sample(4000, random_state=1234)
-    low = min(df1.min(), df2.min())
+    # df1=df1.sample(2000, random_state=1234)
+    # df2=df2.sample(2000, random_state=1234)
+    low = max(min(df1.min(), df2.min()),-5)
     high = max(df1.max(), df2.max())
 
     ax.hist(df1, bins=bins, range=(low,high), **kwargs)
     ax.hist(df2, bins=bins, range=(low,high), **kwargs)
 
-    ax.set_yscale('log')
+    # ax.set_yscale('log')
 
     fig.savefig('{}_{}_{}.pdf'.format(column, channel, sig_sample))
     print 'Signal/Background plot of {} saved'.format(column)
@@ -148,12 +148,16 @@ def plot_scatter_matrix(X, figname):
 
 
 def plot_confusion_matrix(y_test, y_pred, w_test, classes,
-                    figname, normalise=False, cmap=plt.cm.Blues):
+                    figname, normalise_by_col=False, normalise_by_row=False,
+                    cmap=plt.cm.Blues):
 
     cm = confusion_matrix(y_test, y_pred, sample_weight=w_test)
-    if normalise:
+    if normalise_by_col:
         cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
-        print 'Normalised confusion matrix'
+        print 'Normalised efficiency confusion matrix'
+    if normalise_by_row:
+        cm = cm.astype('float') / cm.sum(axis=0)[np.newaxis, :]
+        print 'Normalised purity confusion matrix'
     else:
         print 'Non-normalised confusion matrix'
 
@@ -166,7 +170,7 @@ def plot_confusion_matrix(y_test, y_pred, w_test, classes,
     plt.xticks(tick_marks, classes, rotation=45)
     plt.yticks(tick_marks, classes)
 
-    fmt = '.3f' if normalise else '.3f'
+    fmt = '.3f'
     thresh = cm.max() / 2.
     for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
         plt.text(j, i, format(cm[i, j], fmt),

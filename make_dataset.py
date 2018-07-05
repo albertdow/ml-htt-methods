@@ -582,7 +582,7 @@ def main(opt):
                     ztt_tmp['multi_class'] = 'ztt'
 
                     zl_tmp = bkg_tmp[
-                        ((bkg_tmp['gen_match_1'] != 6) | (bkg_tmp['gen_match_2'] != 6))
+                        ((bkg_tmp['gen_match_1'] != 6) & (bkg_tmp['gen_match_2'] != 6))
                         & ((bkg_tmp['gen_match_1'] != 5) & (bkg_tmp['gen_match_2'] != 5))
                         ]
                     zl_tmp.reset_index(drop=True)
@@ -593,7 +593,7 @@ def main(opt):
                     zj_tmp['multi_class'] = 'misc' ## zj --> misc
 
                 if opt.channel in ['mt', 'et']:
-                    ztt_tmp = bkg_tmp[(bkg_tmp['gen_match_2'] == 5)]
+                    ztt_tmp = bkg_tmp[(bkg_tmp['gen_match_2'] == 5)] # and gen_match_1==4 for mt, gen_match_1==3 for et
                     ztt_tmp.reset_index(drop=True)
                     ztt_tmp['multi_class'] = 'ztt'
 
