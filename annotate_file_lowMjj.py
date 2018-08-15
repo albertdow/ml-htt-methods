@@ -81,13 +81,14 @@ def load_files(filelist):
 
 def main(args, config, file_names):
 
-    path = "/vols/cms/akd116/Offline/output/SM/2018/Apr24_1"
+    # path = "/vols/cms/akd116/Offline/output/SM/2018/Apr24_1"
     # path = "/vols/cms/akd116/Offline/output/SM/2018/May17_2"
+    path = "/vols/cms/akd116/Offline/output/SM/2018/Jun22_2016_Danny/"
 
     # Sanity checks
     for sample in file_names:
         print sample
-        if not os.path.exists("{}/{}_{}_2016.root".format(path, sample, args.channel)):
+        if not os.path.exists("{}/{}".format(path, sample)):
             logger.fatal("Input file %s does not exist.", sample)
             raise Exception
 
@@ -105,7 +106,7 @@ def main(args, config, file_names):
         # preprocessing = [pickle.load(open(x, "rb")) for x in args.preprocessing]
 
         # Open input file
-        file_ = ROOT.TFile("{}/{}_{}_2016.root".format(path, sample, args.channel), "UPDATE")
+        file_ = ROOT.TFile("{}/{}".format(path, sample), "UPDATE")
         if file_ == None:
             logger.fatal("File %s is not existent.", sample)
             raise Exception
@@ -126,7 +127,13 @@ def main(args, config, file_names):
         # Book branches for annotation
         values = []
         for variable in config["variables"]:
-            values.append(array("f", [-9999]))
+            if variable in ["dijetpt","eta_h"]:
+                values.append(array("f", [-9999]))
+            if variable in ["eta_1","eta_2","jdeta","jpt_1","jpt_2","m_sv","m_vis","met",
+                    "met_dphi_1","met_dphi_2","mjj","mt_1","mt_2","mt_lep","pt_1","pt_2","pt_tt","pt_vis","pzeta"]:
+                values.append(array("d", [-9999]))
+            if variable in ["n_jets","n_bjets"]:
+                values.append(array("I", [0]))
             tree.SetBranchAddress(variable, values[-1])
 
         response_max_score = array("f", [-9999])

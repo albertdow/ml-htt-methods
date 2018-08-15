@@ -57,6 +57,10 @@ def parse_arguments():
         dest='analysis', help='what analysis to make dataset for (default cpsm)')
     parser.add_argument('--use_jet_variables', action='store_true', default=False,
         dest='use_jet_variables', help='whether to use jet variables or not')
+    parser.add_argument('--embedding', action='store_true', default=False,
+        dest='use_embedding', help='Use embedded samples?')
+    parser.add_argument('--ff', action='store_true', default=False,
+        dest='ff', help='Use FF method?')
 
 
     return parser.parse_args()

@@ -842,14 +842,22 @@ def fit_multiclass_kfold(X, fold, analysis, channel, sig_sample):
     print class_weight_dict
 
     # multiply w_train by class_weight now
+    # add mjj dependent weight for ggH
 
     for i in w_train.index:
         for key, value in class_weight_dict.iteritems():
         # print 'before: ',index, row
             if y_train[i] == key:
-                # if key == 'ggh':
-                #     w_train.at[i] *= value
-                # else:
+                if key == 'ggh':
+                    w_train.at[i] *= value*1.5 
+                    if sig_sample == 'JHU':
+                        wt_mjj = X_train['mjj'].at[i] * 0.003104
+                        w_train.at[i] *= wt_mjj
+                elif key == 'qqh':
+                    w_train.at[i] *= value*1.0
+                elif channel == 'em' and key == 'qcd':
+                    w_train.at[i] *= value*2.0
+                else:
                     w_train.at[i] *= value
                 # print 'after dividing by class_weight: ',index, row
 
@@ -976,10 +984,10 @@ def fit_multiclass_kfold(X, fold, analysis, channel, sig_sample):
                         'objective':'multi:softprob',
                         'max_depth':7,
                         # 'min_child_weight':1,
-                        'learning_rate':0.05,
+                        'learning_rate':0.025,
                         'silent':1,
                         # 'scale_pos_weight':ratio,
-                        'n_estimators':4000,
+                        'n_estimators':3000,
                         'gamma':5,
                         'subsample':0.9,
                         'colsample_bytree':0.6,
@@ -988,15 +996,32 @@ def fit_multiclass_kfold(X, fold, analysis, channel, sig_sample):
                         # 'missing':-9999,
                         'seed':123456
                         }
-            if channel in ['tt','em']:
+            if channel in ['tt']:
                 params = {
                         'objective':'multi:softprob',
-                        'max_depth':6,
+                        'max_depth':7,
                         # 'min_child_weight':1,
-                        'learning_rate':0.05,
+                        'learning_rate':0.025,
                         'silent':1,
                         # 'scale_pos_weight':ratio,
-                        'n_estimators':2000,
+                        'n_estimators':200,
+                        'gamma':5,
+                        'subsample':0.9,
+                        'colsample_bytree':0.6,
+                        # 'max_delta_step':3,
+                        'nthread':-1,
+                        # 'missing':-9999,
+                        'seed':123456
+                        }
+            if channel in ['em']:
+                params = {
+                        'objective':'multi:softprob',
+                        'max_depth':7,
+                        # 'min_child_weight':1,
+                        'learning_rate':0.025,
+                        'silent':1,
+                        # 'scale_pos_weight':ratio,
+                        'n_estimators':1000,
                         'gamma':5,
                         'subsample':0.9,
                         'colsample_bytree':0.6,
@@ -1006,15 +1031,49 @@ def fit_multiclass_kfold(X, fold, analysis, channel, sig_sample):
                         'seed':123456
                         }
     if sig_sample in ['JHU']:
-        if channel in ['mt','et','em','tt']:
+        if channel in ['tt']:
             params = {
                     'objective':'multi:softprob',
-                    'max_depth':5,
+                    'max_depth':4,
                     # 'min_child_weight':1,
                     'learning_rate':0.025,
                     'silent':1,
                     # 'scale_pos_weight':1,
-                    'n_estimators':1000,
+                    'n_estimators':250,
+                    'gamma':5,
+                    'subsample':0.9,
+                    'colsample_bytree':0.6,
+                    # 'max_delta_step':5,
+                    'nthread':-1,
+                    # 'missing':-100.0,
+                    'seed':123456
+                    }
+        if channel in ['mt','et']:
+            params = {
+                    'objective':'multi:softprob',
+                    'max_depth':4,
+                    # 'min_child_weight':1,
+                    'learning_rate':0.025,
+                    'silent':1,
+                    # 'scale_pos_weight':1,
+                    'n_estimators':1500,
+                    'gamma':5,
+                    'subsample':0.9,
+                    'colsample_bytree':0.6,
+                    # 'max_delta_step':5,
+                    'nthread':-1,
+                    # 'missing':-100.0,
+                    'seed':123456
+                    }
+        if channel in ['em']:
+            params = {
+                    'objective':'multi:softprob',
+                    'max_depth':4,
+                    # 'min_child_weight':1,
+                    'learning_rate':0.025,
+                    'silent':1,
+                    # 'scale_pos_weight':1,
+                    'n_estimators':1500,
                     'gamma':5,
                     'subsample':0.9,
                     'colsample_bytree':0.6,
@@ -1091,26 +1150,26 @@ def fit_multiclass_kfold(X, fold, analysis, channel, sig_sample):
                     verbose=True
                     )
     if sig_sample in ['powheg']:
-        if channel in ['tt','mt','et']:
+        if channel in ['tt','mt','et','em']:
             xgb_clf.fit(
                     X_train,
                     y_train,
                     sample_weight = w_train,
                     early_stopping_rounds=50,
                     eval_set=[(X_train, y_train, w_train), (X_test, y_test, w_test)],
-                    eval_metric = custom_mean_squared_error,
+                    eval_metric = 'mlogloss',
                     verbose=True
                     )
-        if channel in ['em']:
-            xgb_clf.fit(
-                    X_train,
-                    y_train,
-                    sample_weight = w_train,
-                    # early_stopping_rounds=50,
-                    eval_set=[(X_train, y_train, w_train), (X_test, y_test, w_test)],
-                    eval_metric = custom_mean_squared_error,
-                    verbose=True
-                    )
+        # if channel in ['em']:
+        #     xgb_clf.fit(
+        #             X_train,
+        #             y_train,
+        #             sample_weight = w_train,
+        #             # early_stopping_rounds=50,
+        #             eval_set=[(X_train, y_train, w_train), (X_test, y_test, w_test)],
+        #             eval_metric = custom_mean_squared_error,
+        #             verbose=True
+        #             )
     # if sig_sample in ['JHU']:
     #     if channel in ['tt','mt','et','em']:
     #         xgb_clf.fit(
