@@ -197,6 +197,115 @@ def load_data_ntuple(data, tree, branch, sig, channel, cut_feats, apply_cuts, sp
 
     return df
 
+def load_ff_ntuple(data, tree, branch, sig, channel, cut_feats, apply_cuts, split_by_sample):
+
+    try:
+        iterator = uproot.iterate(data, tree, branches=branch+cut_feats)
+    except IOError:
+        print 'Tree/Branches not found'
+
+    df = []
+    for block in iterator:
+        df_b = pd.DataFrame(block)
+
+        if apply_cuts:
+            if channel == 'tt':
+                df_b_tt = []
+                df_b_1 = df_b[
+                        (df_b['pt_1'] > 40)
+                        & ((df_b['mva_olddm_tight_1'] < 0.5)
+                            & (df_b['mva_olddm_vloose_1'] > 0.5)
+                            & (df_b['mva_olddm_tight_2'] > 0.5))
+                        & (df_b['antiele_1'] == True)
+                        & (df_b['antimu_1'] == True)
+                        & (df_b['antiele_2'] == True)
+                        & (df_b['antimu_2'] == True)
+                        & (df_b['leptonveto'] == False)
+                        & (df_b['trg_doubletau'] == True)
+                        ]
+                print df_b_1["wt"]
+                print df_b_1["wt_ff_1"]
+                df_b_1["wt"] = df_b_1["wt_ff_1"]
+                print df_b_1["wt"]
+                df_b_tt.append(df_b_1)
+                df_b_2 = df_b[
+                        (df_b['pt_1'] > 40)
+                        & ((df_b['mva_olddm_tight_2'] < 0.5)
+                            & (df_b['mva_olddm_vloose_2'] > 0.5)
+                            & (df_b['mva_olddm_tight_1'] > 0.5))
+                        & (df_b['antiele_1'] == True)
+                        & (df_b['antimu_1'] == True)
+                        & (df_b['antiele_2'] == True)
+                        & (df_b['antimu_2'] == True)
+                        & (df_b['leptonveto'] == False)
+                        & (df_b['trg_doubletau'] == True)
+                        ]
+                df_b_2["wt"] = df_b_1["wt_ff_2"]
+                df_b_tt.append(df_b_2)
+
+                df_b = pd.concat(df_b_tt)
+
+            elif channel == 'mt':
+                df_b = df_b[
+                        (df_b['iso_1'] < 0.15)
+                        & (df_b['mt_1'] < 40)
+                        & (df_b['mva_olddm_tight_2'] < 0.5)
+                        & (df_b['mva_olddm_vloose_2'] > 0.5)
+                        & (df_b['antiele_2'] == True)
+                        & (df_b['antimu_2'] == True)
+                        & (df_b['leptonveto'] == False)
+                        & (df_b['pt_2'] > 20)
+                        & ((df_b['trg_singlemuon']*df_b['pt_1'] > 23)
+                            | (df_b['trg_mutaucross']*df_b['pt_1'] < 23))
+                        ]
+                df_b["wt"] = df_b["wt_ff_1"]
+
+            elif channel == 'et':
+                df_b = df_b[
+                        (df_b['iso_1'] < 0.1)
+                        & (df_b['mt_1'] < 40)
+                        & (df_b['mva_olddm_tight_2'] < 0.5)
+                        & (df_b['mva_olddm_vloose_2'] > 0.5)
+                        & (df_b['antiele_2'] == True)
+                        & (df_b['antimu_2'] == True)
+                        & (df_b['leptonveto'] == False)
+                        & (df_b['pt_2'] > 20)
+                        & (df_b['trg_singleelectron'] == True)
+                        ]
+                df_b["wt"] = df_b["wt_ff_1"]
+
+            else:
+                assert ValueError('Channel not in ["tt", "mt", "et"]')
+
+            ## TO SELECT THE SIGNAL SAMPLE ACCORDING TO
+            ## CUTS APPLIED RELATING TO n_jets AND mjj
+            if not split_by_sample:
+                df_b = df_b
+            else:
+                if sig == 'powheg':
+                        df_b = df_b[
+                                (df_b['n_jets'] < 2)
+                                | ((df_b['n_jets'] >= 2)
+                                    & (df_b['mjj'] < 300))
+                                ]
+                elif sig == 'JHU':
+                        df_b = df_b[
+                                ((df_b['n_jets'] >= 2)
+                                & (df_b['mjj'] > 300))
+                                ]
+                else:
+                    assert ValueError('Signal sample not in ["powheg", "JHU"]')
+
+            df_b = df_b[(df_b['m_sv'] > 0)] ## SOME m_sv ARE MISSING
+
+        df_b = df_b.drop(cut_feats, axis=1)
+        df.append(df_b)
+
+
+    df = pd.concat(df, ignore_index=True)
+
+    return df
+
 def load_files(filelist):
 
     with open(filelist) as f:

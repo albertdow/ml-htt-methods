@@ -1,5 +1,7 @@
 # Usage:
 #     python make_dataset.py -c --analysis cpsm --sig_sample powheg --split --mode xgb_multi --channel tt --kfold
+# with embedding and FF
+#     python make_dataset.py -c --analysis cpsm --sig_sample powheg --split --mode xgb_multi --channel tt --kfold --embedding --ff
 
 import random
 import uproot
@@ -58,7 +60,7 @@ def parse_arguments():
     parser.add_argument('--use_jet_variables', action='store_true', default=False,
         dest='use_jet_variables', help='whether to use jet variables or not')
     parser.add_argument('--embedding', action='store_true', default=False,
-        dest='use_embedding', help='Use embedded samples?')
+        dest='embedding', help='Use embedded samples?')
     parser.add_argument('--ff', action='store_true', default=False,
         dest='ff', help='Use FF method?')
 
@@ -72,6 +74,8 @@ def main(opt):
     sig_files = lf.load_files('./filelist/sig_{}_files.dat'.format(opt.sig_sample))
     bkg_files = lf.load_files('./filelist/bkgs_files.dat')
     data_files = lf.load_files('./filelist/{}_data_files.dat'.format(opt.channel))
+    if opt.embedding:
+        embed_files = lf.load_files("./filelist/embed_{}_files.dat".format(opt.channel))
 
     # this file contains information about the xsections, lumi and event numbers
     params_file = json.load(open('Params_2016_smsummer16.json'))
@@ -87,6 +91,12 @@ def main(opt):
                 'antiele_1', 'antimu_1', 'antiele_2', 'antimu_2',
                 'leptonveto', 'trg_doubletau',
                 ]
+        if opt.ff:
+            cut_features.extend([
+                'mva_olddm_vloose_1', 'mva_olddm_vloose_2',
+                'wt_ff_1','wt_ff_2',
+                ])
+
 
     elif opt.channel == 'mt':
         cut_features = [
@@ -97,6 +107,10 @@ def main(opt):
                 'trg_singlemuon', 'trg_mutaucross',
                 'os',
                 ]
+        if opt.ff:
+            cut_features.extend([
+                'wt_ff_1'
+                ])
 
     elif opt.channel == 'et':
         cut_features = [
@@ -107,6 +121,10 @@ def main(opt):
                 'trg_singleelectron',
                 'os',
                 ]
+        if opt.ff:
+            cut_features.extend([
+                'wt_ff_1'
+                ])
 
     elif opt.channel == 'em':
         cut_features = [
@@ -274,6 +292,7 @@ def main(opt):
                 'VBFHToWWTo2L2Nu_M-125',
                 ],
             }
+
     if opt.sig_sample == 'powheg' and opt.channel in ['em']:
         class_dict = {
             'ggh': ['GluGluToHToTauTau_M-125',
@@ -481,6 +500,13 @@ def main(opt):
                     'VBFHToWWTo2L2Nu_M-125',
                     ],
                 }
+    if opt.embedding:
+        class_dict["embed"] = [
+                "EmbeddingTauTauB","EmbeddingTauTauC","EmbeddingTauTauD","EmbeddingTauTauE","EmbeddingTauTauF","EmbeddingTauTauG","EmbeddingTauTauH",
+                "EmbeddingMuTauB","EmbeddingMuTauC","EmbeddingMuTauD","EmbeddingMuTauE","EmbeddingMuTauF","EmbeddingMuTauG","EmbeddingMuTauH",
+                "EmbeddingElTauB","EmbeddingElTauC","EmbeddingElTauD","EmbeddingElTauE","EmbeddingElTauF","EmbeddingElTauG","EmbeddingElTauH",
+                "EmbeddingElMuB","EmbeddingElMuC","EmbeddingElMuD","EmbeddingElMuE","EmbeddingElMuF","EmbeddingElMuG","EmbeddingElMuH",
+                ]
 
     # directory of the files (usually /vols/cms/)
     # path = '/vols/cms/akd116/Offline/output/SM/2018/Mar19'
@@ -657,6 +683,85 @@ def main(opt):
     bkgs = pd.concat(bkgs_tmp, ignore_index=True)
 
     print bkgs.shape
+    
+    # add embedding stuff
+    if opt.embedding:
+        embeds_tmp = []
+        for embed in embed_files:
+            print embed
+            embed_tmp = lf.load_mc_ntuple(
+                    '{}/{}_{}_2016.root'.format(path, embed, opt.channel),
+                    'ntuple',
+                    features,
+                    opt.sig_sample,
+                    opt.channel,
+                    cut_features,
+                    apply_cuts=opt.apply_selection,
+                    split_by_sample=opt.split
+                    )
+
+            ztt_embed_tmp = pd.DataFrame()
+
+            embed_tmp['process'] = bkg
+            embed_tmp['wt_xs'] = embed_tmp['wt']
+
+            if opt.mode in ['keras_multi', 'xgb_multi']:
+                for key, value in class_dict.iteritems():
+                    if embed in value:
+                        embed_tmp['multi_class'] = key
+
+            if opt.channel == 'tt':
+                ztt_embed_tmp = bkg_tmp[(bkg_tmp['gen_match_1'] == 5) & (bkg_tmp['gen_match_2'] == 5)]
+                ztt_embed_tmp.reset_index(drop=True)
+                ztt_embed_tmp['multi_class'] = 'ztt_embed'
+
+            if opt.channel in ['mt', 'et']:
+                ztt_embed_tmp = bkg_tmp[(bkg_tmp['gen_match_2'] == 5)] # and gen_match_1==4 for mt, gen_match_1==3 for et
+                ztt_embed_tmp.reset_index(drop=True)
+                ztt_embed_tmp['multi_class'] = 'ztt_embed'
+
+            if opt.channel == 'em':
+                ztt_embed_tmp = bkg_tmp[(bkg_tmp['gen_match_1'] > 2) & (bkg_tmp['gen_match_2'] > 3)]
+                ztt_embed_tmp.reset_index(drop=True)
+                ztt_embed_tmp['multi_class'] = 'ztt_embed'
+
+            embeds_tmp.append(ztt_embed_tmp)
+
+        embeds = pd.concat(embeds_tmp, ignore_index=True)
+
+        print embeds.shape
+        ### 
+
+    ## add FF stuff
+    if opt.ff:
+        ff_tmp = []
+        for data in data_files:
+            print data
+            data_tmp = lf.load_ff_ntuple(
+                    '{}/{}_{}_2016.root'.format(path, data, opt.channel),
+                    'ntuple',
+                    features,
+                    opt.sig_sample,
+                    opt.channel,
+                    cut_features,
+                    apply_cuts=opt.apply_selection,
+                    split_by_sample=opt.split
+                    )
+
+            data_tmp['process'] = data
+            data_tmp['wt_xs'] = data_tmp['wt']
+            if opt.mode in ['keras_multi', 'xgb_multi']:
+                for key, value in class_dict.iteritems():
+                    if data in value:
+                        data_tmp['multi_class'] = "jetFakes"
+                # for key, value in class_weight_dict.iteritems():
+                #     if data_tmp['multi_class'].iloc[0] == key:
+                #         data_tmp['wt'] = value * data_tmp['wt']
+            ff_tmp.append(data_tmp)
+        ff = pd.concat(qcd_tmp, ignore_index=True)
+
+        print ff.shape
+        ###
 
     qcd_tmp = []
     for data in data_files:
@@ -744,11 +849,11 @@ def main(opt):
 
 
         if opt.apply_selection:
-            X_fold1.to_hdf('data_Jun22Danny/dataset_fold1_{}_{}_{}.hdf5' # odd event numbers
+            X_fold1.to_hdf('data_Jun22Danny_embed/dataset_fold1_{}_{}_{}.hdf5' # odd event numbers
                 .format(opt.analysis, opt.channel, opt.sig_sample),
                 key='X_fold1',
                 mode='w')
-            X_fold0.to_hdf('data_Jun22Danny/dataset_fold0_{}_{}_{}.hdf5' # even event numbers
+            X_fold0.to_hdf('data_Jun22Danny_embed/dataset_fold0_{}_{}_{}.hdf5' # even event numbers
                 .format(opt.analysis, opt.channel, opt.sig_sample),
                 key='X_fold0',
                 mode='w')
