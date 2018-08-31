@@ -83,7 +83,9 @@ def main(args, config, file_names):
 
     # path = "/vols/cms/akd116/Offline/output/SM/2018/Apr24_1"
     # path = "/vols/cms/akd116/Offline/output/SM/2018/May17_2"
-    path = "/vols/cms/akd116/Offline/output/SM/2018/Jun22_2016_Danny/"
+    # path = "/vols/cms/akd116/Offline/output/SM/2018/Jun22_2016_Danny/"
+    # path = "/vols/cms/akd116/Offline/output/SM/2018/Aug14_2016_Danny_new/"
+    path = "/vols/cms/akd116/Offline/output/SM/2018/Aug14_2016_Danny_v3/"
 
     # Sanity checks
     for sample in file_names:

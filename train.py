@@ -1,5 +1,5 @@
 # Usage:
-#     python train.py --analysis cpsm --sig_sample powheg --mode xgb_multi --channel tt --kfold --fold 0
+#     python train.py --analysis cpsm --sig_sample madgraph --mjj_training low --mode xgb_multi --channel tt --kfold --fold 0
 
 import random
 import uproot
@@ -47,7 +47,8 @@ def parse_arguments():
     parser.add_argument('--sig_sample', action='store', default='powheg',
         help='''ggh signal sample to run on (default powheg)\n
         choose powheg for n_jets < 2 | (n_jets >= 2 & mjj < 300)\n
-        choose JHU for n_jets >=2 & mjj > 300''')
+        choose JHU for n_jets >=2 & mjj > 300\n
+        choose madgraph for new sig samples''')
     parser.add_argument('--kfold', action='store_true', default=False,
         dest='kfold', help='use kfold (default False)')
     parser.add_argument('--fold', action='store', default=0,
@@ -56,6 +57,8 @@ def parse_arguments():
         dest='cv', help='use cv (default False)')
     parser.add_argument('--analysis', action='store', default='cpsm',
         dest='analysis', help='what analysis to make dataset for (default cpsm)')
+    parser.add_argument('--mjj_training', action='store', default='low',
+        dest='mjj_training', help='Do training for high Mjj or low Mjj events?')
 
     return parser.parse_args()
 
@@ -63,10 +66,9 @@ def parse_arguments():
 
 def main(opt):
 
-    train_data = pd.read_hdf('data/dataset_{}_{}_{}.hdf5'
-            .format(opt.analysis, opt.channel, opt.sig_sample))
-
     if opt.mode == 'sklearn_ttsplit':
+        train_data = pd.read_hdf('data/dataset_{}_{}_{}.hdf5'
+                .format(opt.analysis, opt.channel, opt.sig_sample))
 
         ff.fit_ttsplit(train_data, opt.channel, opt.sig_sample)
 
@@ -96,13 +98,13 @@ def main(opt):
             ff.fit_multiclass_ttsplit(train_data, opt.analysis, opt.channel, opt.sig_sample)
 
         else:
-            train_fold = pd.read_hdf('data_Jun22Danny/dataset_fold{}_{}_{}_{}.hdf5'
-                    .format(opt.fold, opt.analysis, opt.channel, opt.sig_sample))
-            print 'train_fold used:  data_Jun22Danny/dataset_fold{}_{}_{}_{}.hdf5'.format(opt.fold, opt.analysis, opt.channel, opt.sig_sample)
+            train_fold = pd.read_hdf('data_Aug14Danny/dataset_fold{}_{}_{}_{}_{}.hdf5'
+                    .format(opt.fold, opt.analysis, opt.channel, opt.sig_sample, opt.mjj_training))
+            print 'train_fold used:  data_Aug14Danny/dataset_fold{}_{}_{}_{}_{}.hdf5'.format(opt.fold, opt.analysis, opt.channel, opt.sig_sample, opt.mjj_training)
             print train_fold.shape
 
             if not opt.cv:
-                ff.fit_multiclass_kfold(train_fold, opt.fold, opt.analysis, opt.channel, opt.sig_sample)
+                ff.fit_multiclass_kfold(train_fold, opt.fold, opt.analysis, opt.channel, opt.sig_sample, opt.mjj_training)
             else:
                 ff.fit_multiclass_cvkfold(train_fold, opt.fold, opt.analysis, opt.channel, opt.sig_sample)
 

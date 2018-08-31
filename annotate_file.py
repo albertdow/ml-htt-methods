@@ -17,6 +17,7 @@ import os
 import pickle
 from array import array
 import argparse
+from sklearn.preprocessing import StandardScaler
 
 
 def parse_arguments():
@@ -59,6 +60,8 @@ def parse_arguments():
     parser.add_argument(
         "--training", default="JHU", help="Name of training to use.")
     parser.add_argument(
+        "--mjj", default="high", help="mjj training to use.")
+    parser.add_argument(
         "--channel", default="mt", help="Name of channel to annotate.")
     parser.add_argument(
         "--model_folder", default="mt_training_10May_mjj_jdeta_dijetpt/", help="Folder name where trained model is.")
@@ -83,7 +86,9 @@ def main(args, config, file_names):
 
     # path = "/vols/cms/akd116/Offline/output/SM/2018/Apr24_1"
     # path = "/vols/cms/akd116/Offline/output/SM/2018/May17_2"
-    path = "/vols/cms/akd116/Offline/output/SM/2018/Jun22_2016_Danny/"
+    # path = "/vols/cms/akd116/Offline/output/SM/2018/Jun22_2016_Danny/"
+    # path = "/vols/cms/akd116/Offline/output/SM/2018/Aug14_2016_Danny_new/"
+    path = "/vols/cms/akd116/Offline/output/SM/2018/Aug14_2016_Danny_v3/"
 
     # Sanity checks
     for sample in file_names:
@@ -98,11 +103,26 @@ def main(args, config, file_names):
 
         # Load Keras models and preprocessing
 
-        with open('{}/multi_fold1_cpsm_{}_{}_xgb.pkl'.format(args.model_folder, args.channel, args.training), 'r') as f:
-            xgb_clf_fold1 = pickle.load(f)
-        with open('{}/multi_fold0_cpsm_{}_{}_xgb.pkl'.format(args.model_folder, args.channel, args.training), 'r') as f:
-            xgb_clf_fold0 = pickle.load(f)
+        if args.training == "madgraph" or args.training == "powheg":
+            with open('{}/multi_fold1_cpsm_{}_{}_{}_xgb.pkl'
+                    .format(args.model_folder, args.channel, args.training, args.mjj), 'r') as f:
+                xgb_clf_fold1 = pickle.load(f)
+            with open('{}/multi_fold0_cpsm_{}_{}_{}_xgb.pkl'
+                    .format(args.model_folder, args.channel, args.training, args.mjj), 'r') as f:
+                xgb_clf_fold0 = pickle.load(f)
+        else:
+            with open('{}/multi_fold1_cpsm_{}_{}_xgb.pkl'
+                    .format(args.model_folder, args.channel, args.training), 'r') as f:
+                xgb_clf_fold1 = pickle.load(f)
+            with open('{}/multi_fold0_cpsm_{}_{}_xgb.pkl'
+                    .format(args.model_folder, args.channel, args.training), 'r') as f:
+                xgb_clf_fold0 = pickle.load(f)
         classifier = [xgb_clf_fold1, xgb_clf_fold0]
+
+        # with open('{}_{}_scaler.pkl'
+        #         .format(args.channel,args.mjj), 'r') as f:
+        #     preprocessing = pickle.load(f)
+        # preprocessing = StandardScaler()
         # preprocessing = [pickle.load(open(x, "rb")) for x in args.preprocessing]
 
         # Open input file
@@ -163,7 +183,7 @@ def main(args, config, file_names):
 
             if n_jets >= 2 and mjj > 300 and m_sv > 0:
                 values_stacked = np.hstack(values).reshape(1, len(values))
-                # values_preprocessed = preprocessing[event % 2].transform(
+                # values_preprocessed = preprocessing.fit_transform(
                 #     values_stacked)
                 # response = classifier[event % 2].predict_proba(values_preprocessed)
                 response = classifier[event % 2].predict_proba(values_stacked)

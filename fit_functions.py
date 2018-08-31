@@ -32,6 +32,7 @@ from sklearn.model_selection import RandomizedSearchCV
 from sklearn.model_selection import StratifiedKFold
 from sklearn.model_selection import StratifiedShuffleSplit
 from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import MinMaxScaler
 from sklearn.preprocessing import LabelEncoder
 from pandas.plotting import scatter_matrix
 from sklearn.metrics import confusion_matrix
@@ -66,26 +67,24 @@ def fit_ttsplit(X, channel, fold):
         for key, value in class_weight_dict.iteritems():
             if y_train[i] == key:
                     w_train.at[i] *= value
+                    if key == 'ggh':
+                        w_train.at[i] *= value * 1./3.
 
     X_train = X_train.drop([
         'event','wt','wt_xs','multi_class','process','class',
-        # 'mjj','jdeta','jpt_1','jpt_2','jeta_1','jeta_2',
-        'jphi_1','jphi_2',
         ], axis=1).reset_index(drop=True)
 
     X_test = X_test.drop([
         'event','wt','wt_xs','multi_class','process','class',
-        # 'mjj','jdeta','jpt_1','jpt_2','jeta_1','jeta_2',
-        'jphi_1','jphi_2',
         ], axis=1).reset_index(drop=True)
 
     params = {
             'objective':'binary:logistic',
-            'max_depth':15,
+            'max_depth':8,
             'learning_rate':0.01,
             'silent':1,
-            'n_estimators':2000,
-            'subsample':0.6,
+            'n_estimators':10000,
+            'subsample':0.9,
             # 'max_delta_step':1,
             'nthread':-1,
             'seed':123456
@@ -97,9 +96,9 @@ def fit_ttsplit(X, channel, fold):
             X_train,
             y_train,
             sample_weight = w_train,
-            early_stopping_rounds=20,
+            early_stopping_rounds=50,
             eval_set=[(X_train, y_train,w_train), (X_test, y_test,w_test)],
-            eval_metric = 'rmse',
+            eval_metric = ['rmse','auc'],
             verbose=True
             )
 
@@ -111,7 +110,7 @@ def fit_ttsplit(X, channel, fold):
     print classification_report(
             y_test,
             y_predict,
-            target_names=["sm", "ps"],
+            target_names=["qqh", "ggh"],
             sample_weight=w_test
             )
 
@@ -192,12 +191,12 @@ def fit_ttsplit(X, channel, fold):
 
     pf.plot_confusion_matrix(
             y_test, y_prediction, w_test,
-            classes=['sm', 'ps'],
+            classes=["qqh", "ggh"],
             figname='binary_{}_fold{}_non-normalised_weights_cm.pdf'.format(channel,fold))
 
     pf.plot_confusion_matrix(
             y_test, y_prediction, w_test,
-            classes=['sm', 'ps'],
+            classes=["qqh", "ggh"],
             figname='binary_{}_fold{}_normalised_weights_cm.pdf'.format(channel,fold),
             normalise_by_row=True)
 
@@ -488,6 +487,20 @@ def custom_mean_squared_error(y_predicted, y_true):
     error = np.subtract(pred_labels, labels)
 
     return 'custom_mean_squared_error', np.mean(np.square(error))
+
+def custom_exponential_loss(y_predicted, y_true):
+    labels = y_true.get_label()
+    assert len(y_predicted) == len(labels)
+    preds = []
+    for ls in y_predicted:
+        preds.append(max([(v,i) for i,v in enumerate(ls)]))
+
+    np_preds = np.array(preds)
+    pred_labels = np_preds[:,1]
+
+    factor = labels * pred_labels
+
+    return 'custom_exponential_loss', - np.exp((1./len(labels)) * np.mean(factor))
 
 def fit_multiclass_ttsplit(X, analysis, channel, sig_sample):
 
@@ -815,7 +828,7 @@ def fit_multiclass_ttsplit(X, analysis, channel, sig_sample):
     return None
 
 
-def fit_multiclass_kfold(X, fold, analysis, channel, sig_sample):
+def fit_multiclass_kfold(X, fold, analysis, channel, sig_sample, mjj_training):
 
     ## START EDITING THIS FOR ODD/EVEN SPLIT
     print 'Training XGBoost model fold{}'.format(fold)
@@ -830,6 +843,9 @@ def fit_multiclass_kfold(X, fold, analysis, channel, sig_sample):
         stratify=X['multi_class'].as_matrix(),
         )
     print X_train[(X_train.multi_class == 'ggh')].shape
+
+    # if want to plot any variables
+    # pf.plot_signal_background(X[X["multi_class"] == "ggh"], X[X["multi_class"] == "qqh"], "mjj",channel,sig_sample)
 
     sum_w = X_train['wt_xs'].sum()
     # print 'sum_w', sum_w
@@ -846,20 +862,27 @@ def fit_multiclass_kfold(X, fold, analysis, channel, sig_sample):
 
     for i in w_train.index:
         for key, value in class_weight_dict.iteritems():
-        # print 'before: ',index, row
             if y_train[i] == key:
                 if key == 'ggh':
-                    w_train.at[i] *= value*1.5 
-                    if sig_sample == 'JHU':
-                        wt_mjj = X_train['mjj'].at[i] * 0.003104
+                    # print 'before: ',w_train.at[i]
+                    w_train.at[i] *= value * 1.5/3.
+                    # print 'after multiplying by class_weight: ',w_train.at[i]
+                    if mjj_training == 'high':
+                        wt_mjj = X_train['mjj'].at[i] * 0.003104 - 0.009583 #from ROC 
+                        # wt_mjj = X_train['mjj'].at[i] * 0.005 #just raising
+                        # wt_mjj = ((X_train['mjj'].at[i])**2 * 0.000017 - (X_train['mjj'].at[i] * 0.0017)) #second order poly
                         w_train.at[i] *= wt_mjj
-                elif key == 'qqh':
-                    w_train.at[i] *= value*1.0
-                elif channel == 'em' and key == 'qcd':
-                    w_train.at[i] *= value*2.0
+                # elif key == 'qqh':
+                #     w_train.at[i] *= value*1.0
+                # elif channel == 'em' and key == 'qcd':
+                #     w_train.at[i] *= value*2.0
                 else:
                     w_train.at[i] *= value
-                # print 'after dividing by class_weight: ',index, row
+
+    # print w_train
+    # minMax = MinMaxScaler()
+    # w_train = minMax.fit_transform(w_train)
+    # print w_train
 
     ## use one-hot encoding
     # encode class values as integers
@@ -886,27 +909,33 @@ def fit_multiclass_kfold(X, fold, analysis, channel, sig_sample):
     X_train = X_train.drop([
         'wt','wt_xs', 'process', 'multi_class','event',
         'gen_match_1', 'gen_match_2',#'eta_tt',
+        #'jeta_1','jeta_2',#'zfeld',
         # 'jpt_1','jpt_2','dijetpt',
         ], axis=1).reset_index(drop=True)
 
     X_test = X_test.drop([
         'wt','wt_xs', 'process', 'multi_class','event',
         'gen_match_1', 'gen_match_2',#'eta_tt',
+        #'jeta_1','jeta_2',#'zfeld',
         # 'jpt_1','jpt_2','dijetpt',
         ], axis=1).reset_index(drop=True)
+    if channel == "em":
+        X_train = X_train.drop(["wt_em_qcd"], axis=1).reset_index(drop=True)
+        X_test = X_test.drop(["wt_em_qcd"], axis=1).reset_index(drop=True)
 
-    # to use names "f0" etcs
-    print X_train.columns
-    orig_columns = X_train.columns
-    X_train.columns = ["f{}".format(x) for x in np.arange(X_train.shape[1])]
-    X_test.columns = ["f{}".format(x) for x in np.arange(X_train.shape[1])]
-    print X_train.columns
 
     ## standard scaler
     # scaler = StandardScaler()
+
     # np_scaled_fit = scaler.fit(X_train.as_matrix())
     # with open('{}_fold{}_scaler.pkl'.format(channel, fold), 'w') as f:
     #     pickle.dump(scaler, f)
+    
+    # uncomment here if want to use scaler
+    ## load scaler from make_dataset
+    # with open('{}_{}_scaler.pkl'.format(channel,mjj_training), 'r') as f:
+    #     scaler = pickle.load(f)
+    # print X_train.head()
     # np_scaled_train = scaler.transform(X_train.as_matrix())
     # X_scaled_train = pd.DataFrame(np_scaled_train)
     # X_scaled_train.columns = X_train.columns
@@ -914,6 +943,7 @@ def fit_multiclass_kfold(X, fold, analysis, channel, sig_sample):
     # del X_train
 
     # X_train = X_scaled_train
+    # print X_train.head()
 
     # del X_scaled_train
 
@@ -926,6 +956,22 @@ def fit_multiclass_kfold(X, fold, analysis, channel, sig_sample):
     # X_test = X_scaled_test
 
     # del X_scaled_test
+
+
+    # X_train = X_train.drop([
+    #     'zfeld','jeta_1','jeta_2'
+    #     ], axis=1).reset_index(drop=True)
+
+    # X_test = X_test.drop([
+    #     'zfeld','jeta_1','jeta_2'
+    #     ], axis=1).reset_index(drop=True)
+
+    # to use names "f0" etcs
+    print X_train.columns
+    orig_columns = X_train.columns
+    X_train.columns = ["f{}".format(x) for x in np.arange(X_train.shape[1])]
+    X_test.columns = ["f{}".format(x) for x in np.arange(X_train.shape[1])]
+    print X_train.columns
 
 
     ## SOME TESTS WITH WEIGHTS
@@ -959,7 +1005,7 @@ def fit_multiclass_kfold(X, fold, analysis, channel, sig_sample):
     #             'nthread':-1,
     #             'seed':123456
     #             }
-    if sig_sample in ['powheg']:
+    if mjj_training in ['low']:
         if analysis == 'sm':
             if channel in ['tt','mt','et','em']:
                 params = {
@@ -1030,19 +1076,19 @@ def fit_multiclass_kfold(X, fold, analysis, channel, sig_sample):
                         # 'missing':-9999,
                         'seed':123456
                         }
-    if sig_sample in ['JHU']:
+    if mjj_training in ['high']:
         if channel in ['tt']:
             params = {
                     'objective':'multi:softprob',
-                    'max_depth':4,
-                    # 'min_child_weight':1,
+                    'max_depth':5,
+                    'min_child_weight':0,
                     'learning_rate':0.025,
                     'silent':1,
                     # 'scale_pos_weight':1,
-                    'n_estimators':250,
-                    'gamma':5,
+                    'n_estimators':600,
+                    # 'gamma':5,
                     'subsample':0.9,
-                    'colsample_bytree':0.6,
+                    # 'colsample_bytree':0.9,
                     # 'max_delta_step':5,
                     'nthread':-1,
                     # 'missing':-100.0,
@@ -1082,6 +1128,111 @@ def fit_multiclass_kfold(X, fold, analysis, channel, sig_sample):
                     # 'missing':-100.0,
                     'seed':123456
                     }
+    if sig_sample == "madgraph":
+        if mjj_training in ['high']:
+            if channel in ['tt']:
+                params = {
+                        'objective':'multi:softprob',
+                        'max_depth':7,
+                        'min_child_weight':1,
+                        'learning_rate':0.025,
+                        'silent':1,
+                        # 'scale_pos_weight':1,
+                        'n_estimators':10000,
+                        'gamma':2,
+                        'subsample':0.9,
+                        'colsample_bytree':0.6,
+                        # 'max_delta_step':5,
+                        'nthread':-1,
+                        # 'missing':-100.0,
+                        'seed':123456
+                        }
+            if channel in ['mt','et']:
+                params = {
+                        'objective':'multi:softprob',
+                        'max_depth':7,
+                        'min_child_weight':1,
+                        'learning_rate':0.025,
+                        'silent':1,
+                        # 'scale_pos_weight':1,
+                        'n_estimators':10000,
+                        'gamma':2,
+                        'subsample':0.9,
+                        'colsample_bytree':0.6,
+                        # 'max_delta_step':5,
+                        'nthread':-1,
+                        # 'missing':-100.0,
+                        'seed':123456
+                        }
+            if channel in ['em']:
+                params = {
+                        'objective':'multi:softprob',
+                        'max_depth':7,
+                        'min_child_weight':1,
+                        'learning_rate':0.025,
+                        'silent':1,
+                        # 'scale_pos_weight':1,
+                        'n_estimators':10000,
+                        'gamma':2,
+                        'subsample':0.9,
+                        'colsample_bytree':0.6,
+                        # 'max_delta_step':5,
+                        'nthread':-1,
+                        # 'missing':-100.0,
+                        'seed':123456
+                        }
+        elif mjj_training in ['low']:
+            if channel in ['tt']:
+                params = {
+                        'objective':'multi:softprob',
+                        'max_depth':8,
+                        'min_child_weight':1,
+                        'learning_rate':0.005,
+                        'silent':1,
+                        # 'scale_pos_weight':1,
+                        'n_estimators':1500,
+                        'gamma':0,
+                        'subsample':0.9,
+                        'colsample_bytree':0.6,
+                        # 'max_delta_step':5,
+                        'nthread':-1,
+                        # 'missing':-100.0,
+                        'seed':123456
+                        }
+            if channel in ['mt','et']:
+                params = {
+                        'objective':'multi:softprob',
+                        'max_depth':8,
+                        'min_child_weight':1,
+                        'learning_rate':0.025,
+                        'silent':1,
+                        # 'scale_pos_weight':1,
+                        'n_estimators':1500,
+                        'gamma':0,
+                        'subsample':0.9,
+                        'colsample_bytree':0.6,
+                        # 'max_delta_step':5,
+                        'nthread':-1,
+                        # 'missing':-100.0,
+                        'seed':123456
+                        }
+            if channel in ['em']:
+                params = {
+                        'objective':'multi:softprob',
+                        'max_depth':8,
+                        'min_child_weight':1,
+                        'learning_rate':0.025,
+                        'silent':1,
+                        # 'scale_pos_weight':1,
+                        'n_estimators':800,
+                        'gamma':0,
+                        'subsample':0.9,
+                        'colsample_bytree':0.6,
+                        # 'max_delta_step':5,
+                        'nthread':-1,
+                        # 'missing':-100.0,
+                        'seed':123456
+                        }
         # if channel in ['mt','et','em']:
         #     params = {
         #             'objective':'multi:softprob',
@@ -1138,7 +1289,7 @@ def fit_multiclass_kfold(X, fold, analysis, channel, sig_sample):
     xgb_clf = xgb.XGBClassifier(**params)
 
 
-    if sig_sample in ['JHU']:
+    if mjj_training in ['high']:
         if channel in ['tt','mt','et','em']:
             xgb_clf.fit(
                     X_train,
@@ -1146,16 +1297,16 @@ def fit_multiclass_kfold(X, fold, analysis, channel, sig_sample):
                     sample_weight = w_train,
                     early_stopping_rounds=50,
                     eval_set=[(X_train, y_train, w_train), (X_test, y_test, w_test)],
-                    eval_metric = 'mlogloss',
+                    eval_metric = ['merror','mlogloss'],
                     verbose=True
                     )
-    if sig_sample in ['powheg']:
+    if mjj_training in ['low']:
         if channel in ['tt','mt','et','em']:
             xgb_clf.fit(
                     X_train,
                     y_train,
                     sample_weight = w_train,
-                    early_stopping_rounds=50,
+                    early_stopping_rounds=10,
                     eval_set=[(X_train, y_train, w_train), (X_test, y_test, w_test)],
                     eval_metric = 'mlogloss',
                     verbose=True
@@ -1184,6 +1335,8 @@ def fit_multiclass_kfold(X, fold, analysis, channel, sig_sample):
 
     # evals_result = xgb_clf.evals_result()
 
+    print "best iteration: ",xgb_clf.best_iteration
+
     y_predict = xgb_clf.predict(X_test)
     print 'true label: {},{},{}'.format(y_test[0],y_test[1],y_test[2])
     print 'predicted label: {},{},{}'.format(y_predict[0],y_predict[1],y_predict[2])
@@ -1205,7 +1358,7 @@ def fit_multiclass_kfold(X, fold, analysis, channel, sig_sample):
 
 
     print xgb_clf
-    with open('multi_fold{}_{}_{}_{}_xgb.pkl'.format(fold, analysis, channel, sig_sample), 'w') as f:
+    with open('multi_fold{}_{}_{}_{}_{}_xgb.pkl'.format(fold, analysis, channel, sig_sample, mjj_training), 'w') as f:
         pickle.dump(xgb_clf, f)
 
     # Define these so that I can use plot_output()
@@ -1222,6 +1375,15 @@ def fit_multiclass_kfold(X, fold, analysis, channel, sig_sample):
             weight=w_test
             )
 
+    ## Plotting things
+
+    pf.plot_learning_curve(xgb_clf,
+            "mlogloss",
+            "multi_fold{}_{}_{}_{}_{}_learning_curve_logloss.pdf".format(fold, analysis, channel, sig_sample, mjj_training))
+    pf.plot_learning_curve(xgb_clf,
+            "merror",
+            "multi_fold{}_{}_{}_{}_{}_learning_curve_error.pdf".format(fold, analysis, channel, sig_sample, mjj_training))
+
     # pf.plot_output(
     #         xgb_clf.booster(),
     #         xg_train, xg_test,
@@ -1231,12 +1393,12 @@ def fit_multiclass_kfold(X, fold, analysis, channel, sig_sample):
     pf.plot_features(
             xgb_clf.booster(),
             'weight',
-            'multi_fold{}_{}_{}_{}_features_weight.pdf'.format(fold, analysis, channel, sig_sample))
+            'multi_fold{}_{}_{}_{}_{}_features_weight.pdf'.format(fold, analysis, channel, sig_sample, mjj_training))
 
     pf.plot_features(
             xgb_clf.booster(),
             'gain',
-            'multi_fold{}_{}_{}_{}_features_gain.pdf'.format(fold, analysis, channel, sig_sample))
+            'multi_fold{}_{}_{}_{}_{}_features_gain.pdf'.format(fold, analysis, channel, sig_sample, mjj_training))
 
 
     y_prediction = xgb_clf.predict(X_test)
@@ -1245,17 +1407,17 @@ def fit_multiclass_kfold(X, fold, analysis, channel, sig_sample):
             y_test, y_prediction, w_test,
             # classes=['background', 'signal'],
             classes=list(encoder_test.classes_),
-            figname='multi_fold{}_{}_{}_{}_non-normalised_weights_cm.pdf'.format(fold, analysis, channel, sig_sample))
+            figname='multi_fold{}_{}_{}_{}_{}_non-normalised_weights_cm.pdf'.format(fold, analysis, channel, sig_sample, mjj_training))
 
     pf.plot_confusion_matrix(
             y_test, y_prediction, w_test,
             classes=list(encoder_test.classes_),
-            figname='multi_fold{}_{}_{}_{}_normalised_efficiency_weights_cm.pdf'.format(fold, analysis, channel, sig_sample),
+            figname='multi_fold{}_{}_{}_{}_{}_normalised_efficiency_weights_cm.pdf'.format(fold, analysis, channel, sig_sample, mjj_training),
             normalise_by_col=True)
     pf.plot_confusion_matrix(
             y_test, y_prediction, w_test,
             classes=list(encoder_test.classes_),
-            figname='multi_fold{}_{}_{}_{}_normalised_purity_weights_cm.pdf'.format(fold, analysis, channel, sig_sample),
+            figname='multi_fold{}_{}_{}_{}_{}_normalised_purity_weights_cm.pdf'.format(fold, analysis, channel, sig_sample, mjj_training),
             normalise_by_row=True)
 
     return None

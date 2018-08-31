@@ -28,8 +28,8 @@ def plot_signal_background(data1, data2, column,
     df2 = data2[column]
 
     fig, ax = plt.subplots()
-    # df1=df1.sample(2000, random_state=1234)
-    # df2=df2.sample(2000, random_state=1234)
+    df1=df1.sample(2000, random_state=1234)
+    df2=df2.sample(2000, random_state=1234)
     low = max(min(df1.min(), df2.min()),-5)
     high = max(df1.max(), df2.max())
 
@@ -323,5 +323,26 @@ def compare_train_test(clf, X_train, y_train, X_test, y_test, figname, bins=30):
 
     fig.savefig(figname)
     print 'BDT score saved as {}'.format(figname)
+
+    return None
+
+def plot_learning_curve(model, metric, figname):
+    # metric can be mlogloss or merror
+    # retrieve performance metrics
+    results = model.evals_result()
+    epochs = len(results['validation_0'][metric])
+    x_axis = range(0, epochs)
+
+    # plot log loss
+    fig, ax = plt.subplots()
+    ax.plot(x_axis, results['validation_0'][metric], label='Train')
+    ax.plot(x_axis, results['validation_1'][metric], label='Test')
+    ax.legend()
+    plt.ylabel(metric)
+    plt.title('XGBoost {}'.format(metric))
+
+
+    fig.savefig(figname)
+    print 'Learning curve plotted as {}'.format(figname)
 
     return None

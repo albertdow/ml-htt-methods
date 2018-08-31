@@ -3,7 +3,7 @@ import os
 import pandas as pd
 import numpy as np
 
-def load_mc_ntuple(data, tree, branch, sig, channel, cut_feats, apply_cuts, split_by_sample):
+def load_mc_ntuple(data, tree, branch, mjj_training, channel, cut_feats, apply_cuts, split_by_sample, signal, embedding, ff):
     # LOAD MC NTUPLES AND APPLY BASELINE CUTS BY CHANNEL
     # need to do something for when df too large..
 
@@ -68,24 +68,54 @@ def load_mc_ntuple(data, tree, branch, sig, channel, cut_feats, apply_cuts, spli
                 else:
                     assert ValueError('Channel not in ["tt", "mt", "et", "em"]')
 
+                if not embedding and not signal:
+                    if channel == 'tt': 
+                        df_b = df_b[
+                                ~((df_b['gen_match_1'] == 5) 
+                                    & (df_b['gen_match_2'] == 5))]
+
+                    elif channel == 'mt': 
+                        df_b = df_b[
+                                ~((df_b['gen_match_1'] == 4) 
+                                    & (df_b['gen_match_2'] == 5))]
+                        
+                    elif channel == 'et': 
+                        df_b = df_b[
+                                ~((df_b['gen_match_1'] == 3) 
+                                    & (df_b['gen_match_2'] == 5))]
+
+                    elif channel == 'em': 
+                        df_b = df_b[
+                                ~((df_b['gen_match_1'] == 3) 
+                                    & (df_b['gen_match_2'] == 4))]
+
+                if ff and not signal:
+                    if channel == 'tt': 
+                        df_b = df_b[
+                                ~((df_b['gen_match_1'] == 6)
+                                    | (df_b['gen_match_2'] == 6))]
+
+                    elif channel in ['et','mt']:
+                        df_b = df_b[df_b['gen_match_2'] < 6]
+
                 ## TO SELECT THE SIGNAL SAMPLE ACCORDING TO
                 ## CUTS APPLIED RELATING TO n_jets AND mjj
                 if not split_by_sample:
                     df_b = df_b
                 else:
-                    if sig == 'powheg':
+                    if mjj_training == 'low':
                             df_b = df_b[
                                     (df_b['n_jets'] < 2)
                                     | ((df_b['n_jets'] >= 2)
                                         & (df_b['mjj'] < 300))
                                     ]
-                    elif sig == 'JHU':
+                    elif mjj_training == 'high':
                             df_b = df_b[
                                     ((df_b['n_jets'] >= 2)
                                     & (df_b['mjj'] > 300))
                                     ]
                     else:
-                        assert ValueError('Signal sample not in ["powheg", "JHU"]')
+                        assert ValueError('Mjj training not in ["low", "high"]')
 
                 df_b = df_b[(df_b['m_sv'] > 0)] ## SOME m_sv ARE MISSING
 
@@ -98,7 +128,7 @@ def load_mc_ntuple(data, tree, branch, sig, channel, cut_feats, apply_cuts, spli
 
     return df
 
-def load_data_ntuple(data, tree, branch, sig, channel, cut_feats, apply_cuts, split_by_sample):
+def load_data_ntuple(data, tree, branch, mjj_training, channel, cut_feats, apply_cuts, split_by_sample):
     ## THIS FUNCTION IS FOR READING IN SAME SIGN DATA (FOR mt, et, em CHANNELS)
     ## OR ANTIISOLATED (FOR tt CHANNEL) FOR THE QCD ESTIMATION
 
@@ -173,19 +203,19 @@ def load_data_ntuple(data, tree, branch, sig, channel, cut_feats, apply_cuts, sp
             if not split_by_sample:
                 df_b = df_b
             else:
-                if sig == 'powheg':
+                if mjj_training == 'low':
                         df_b = df_b[
                                 (df_b['n_jets'] < 2)
                                 | ((df_b['n_jets'] >= 2)
                                     & (df_b['mjj'] < 300))
                                 ]
-                elif sig == 'JHU':
+                elif mjj_training == 'high':
                         df_b = df_b[
                                 ((df_b['n_jets'] >= 2)
                                 & (df_b['mjj'] > 300))
                                 ]
                 else:
-                    assert ValueError('Signal sample not in ["powheg", "JHU"]')
+                    assert ValueError('Mjj training not in ["low", "high"]')
 
             df_b = df_b[(df_b['m_sv'] > 0)] ## SOME m_sv ARE MISSING
 
@@ -197,7 +227,7 @@ def load_data_ntuple(data, tree, branch, sig, channel, cut_feats, apply_cuts, sp
 
     return df
 
-def load_ff_ntuple(data, tree, branch, sig, channel, cut_feats, apply_cuts, split_by_sample):
+def load_ff_ntuple(data, tree, branch, mjj_training, channel, cut_feats, apply_cuts, split_by_sample):
 
     try:
         iterator = uproot.iterate(data, tree, branches=branch+cut_feats)
@@ -223,10 +253,7 @@ def load_ff_ntuple(data, tree, branch, sig, channel, cut_feats, apply_cuts, spli
                         & (df_b['leptonveto'] == False)
                         & (df_b['trg_doubletau'] == True)
                         ]
-                print df_b_1["wt"]
-                print df_b_1["wt_ff_1"]
                 df_b_1["wt"] = df_b_1["wt_ff_1"]
-                print df_b_1["wt"]
                 df_b_tt.append(df_b_1)
                 df_b_2 = df_b[
                         (df_b['pt_1'] > 40)
@@ -240,7 +267,7 @@ def load_ff_ntuple(data, tree, branch, sig, channel, cut_feats, apply_cuts, spli
                         & (df_b['leptonveto'] == False)
                         & (df_b['trg_doubletau'] == True)
                         ]
-                df_b_2["wt"] = df_b_1["wt_ff_2"]
+                df_b_2["wt"] = df_b_2["wt_ff_2"]
                 df_b_tt.append(df_b_2)
 
                 df_b = pd.concat(df_b_tt)
@@ -282,19 +309,19 @@ def load_ff_ntuple(data, tree, branch, sig, channel, cut_feats, apply_cuts, spli
             if not split_by_sample:
                 df_b = df_b
             else:
-                if sig == 'powheg':
+                if mjj_training == 'low':
                         df_b = df_b[
                                 (df_b['n_jets'] < 2)
                                 | ((df_b['n_jets'] >= 2)
                                     & (df_b['mjj'] < 300))
                                 ]
-                elif sig == 'JHU':
+                elif mjj_training == 'high':
                         df_b = df_b[
                                 ((df_b['n_jets'] >= 2)
                                 & (df_b['mjj'] > 300))
                                 ]
                 else:
-                    assert ValueError('Signal sample not in ["powheg", "JHU"]')
+                    assert ValueError('Mjj training not in ["low", "high"]')
 
             df_b = df_b[(df_b['m_sv'] > 0)] ## SOME m_sv ARE MISSING
 
