@@ -1,0 +1,59 @@
+# Define classes based on tree names in dataset file
+classes:
+    - ggh
+    - jetFakes
+    - misc
+    - qqh
+    - tt
+    - ztt_embed
+
+# Set class weights
+class_weights:
+    ggh: 213.2
+    qqh: 2173.2
+    ztt: 1.6
+    zll: 19.9
+    w: 8.0
+    tt: 17.9
+    ss: 6.9
+    misc: 86.0
+
+# Define global scale factor, which is multiplied to all event weights
+global_weight_scale: 1.0
+
+# Set event weight variable
+event_weights: training_weight
+
+# Define list of variables to be used for training
+variables:
+
+    - dijetpt
+    - eta_1
+    - eta_2
+    - eta_h
+    - jdeta
+    - jpt_1
+    - jpt_2
+    - m_sv
+    - m_vis
+    - met
+    - mjj
+    - mt_1
+    - mt_2
+    - mt_lep
+    - n_bjets
+    - n_jets
+    - pt_1
+    - pt_2
+    - pt_tt
+    - pt_vis
+
+# Split of dataset in training and validation (in TMVA called training and testing)
+train_test_split: 0.5
+
+# Define preprocessing
+preprocessing: standard_scaler
+
+# Set random seed for initialization of parameters and dataset splits
+seed: 123456
+
