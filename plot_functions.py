@@ -1,6 +1,5 @@
 import pandas.core.common as com
 from pandas.core.index import Index
-from pandas.tools import plotting
 from pandas.plotting import scatter_matrix
 
 import itertools
@@ -38,7 +37,7 @@ def plot_signal_background(data1, data2, column,
 
     # ax.set_yscale('log')
 
-    fig.savefig('{}_{}_{}.pdf'.format(column, channel, sig_sample))
+    fig.savefig('{}_{}_{}_{}_vs_{}.pdf'.format(column, channel, sig_sample, data1.multi_class.iloc[0], data2.multi_class.iloc[0]))
     print 'Signal/Background plot of {} saved'.format(column)
 
 
@@ -209,7 +208,7 @@ def plot_correlation_matrix(data, figname, **kwds):
 
     corrmat = data.corr(**kwds)
 
-    fig, ax1 = plt.subplots(ncols=1, figsize=(6,5))
+    fig, ax1 = plt.subplots(ncols=1, figsize=(10,8))
 
     opts = {'cmap': plt.get_cmap("RdBu"),
             'vmin': -1, 'vmax': +1}

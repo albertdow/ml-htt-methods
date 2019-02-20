@@ -333,6 +333,59 @@ def load_ff_ntuple(data, tree, branch, mjj_training, channel, cut_feats, apply_c
 
     return df
 
+def load_rhoID_ntuple(data, tree, branch, channel, cut_feats, apply_cuts):
+    # LOAD MC NTUPLES AND APPLY BASELINE CUTS BY CHANNEL
+    # need to do something for when df too large..
+
+
+    try:
+        iterator = uproot.iterate(data, tree, branches=branch+cut_feats)
+    except IOError:
+        print 'Tree/Branches not found'
+
+    df1 = []
+    df2 = []
+    try:
+        for block in iterator:
+            df_b1 = pd.DataFrame(block)
+            df_b2 = pd.DataFrame(block)
+
+            if apply_cuts:
+                if channel == 'tt':
+                    df_b1 = df_b1[
+                            (df_b1['pt_1'] > 40)
+                            & (df_b1['mva_olddm_tight_1'] > 0.5)
+                            & (df_b1['antiele_1'] == True)
+                            & (df_b1['antimu_1'] == True)
+                            & (df_b1['leptonveto'] == False)
+                            & (df_b1['trg_doubletau'] == True)
+                            & (df_b1['tau_decay_mode_1'] == 1)
+                            ]
+                    df_b2 = df_b2[
+                            (df_b2['pt_1'] > 40)
+                            & (df_b2['mva_olddm_tight_2'] > 0.5)
+                            & (df_b2['antiele_2'] == True)
+                            & (df_b2['antimu_2'] == True)
+                            & (df_b2['leptonveto'] == False)
+                            & (df_b2['trg_doubletau'] == True)
+                            & (df_b2['tau_decay_mode_2'] == 1)
+                            ]
+
+                else:
+                    assert ValueError('Channel not "tt"')
+
+            df_b1 = df_b1.drop(cut_feats, axis=1)
+            df1.append(df_b1)
+            df_b2 = df_b2.drop(cut_feats, axis=1)
+            df2.append(df_b2)
+
+    except IndexError:
+        print 'zero events in ntuple'
+
+    df1 = pd.concat(df1, ignore_index=True)
+    df2 = pd.concat(df2, ignore_index=True)
+    return df1, df2
+
 def load_files(filelist):
 
     with open(filelist) as f:

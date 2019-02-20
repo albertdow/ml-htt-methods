@@ -1,22 +1,22 @@
 # Usage:
 #     python train.py --analysis cpsm --sig_sample madgraph --mjj_training low --mode xgb_multi --channel tt --kfold --fold 0
+# cp decays inc training
+#     python train.py --analysis cpsm --sig_sample powheg --mode xgb_multi --channel tt --kfold --fold 0 --inc --era 2017 
+
+# rho ID
+# python train.py --analysis cpsm --mode rho_ttsplit --channel tt --kfold --fold 0
 
 import random
 import uproot
-import ROOT
 import xgboost as xgb
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
 import pickle
 import argparse
 from scipy import interp
-from root_numpy import array2root
 import json
 from pandas.core.groupby import GroupBy
 # import seaborn as sns
-from mlglue.tree import tree_to_tmva, BDTxgboost, BDTsklearn
-import xgboost2tmva
 
 from sklearn.utils import class_weight
 from sklearn.metrics import classification_report
@@ -59,6 +59,10 @@ def parse_arguments():
         dest='analysis', help='what analysis to make dataset for (default cpsm)')
     parser.add_argument('--mjj_training', action='store', default='low',
         dest='mjj_training', help='Do training for high Mjj or low Mjj events?')
+    parser.add_argument('--inc', action='store_true', default=False,
+        dest='inc', help='Do inclusive training?')
+    parser.add_argument('--era', action='store', default='2016',
+        dest='era', help='Which year?')
 
     return parser.parse_args()
 
@@ -78,6 +82,12 @@ def main(opt):
 
         ff.fit_ttsplit(train_data, opt.channel, opt.fold)
 
+    if opt.mode == 'rho_ttsplit':
+        train_data = pd.read_hdf('RhoID/binary_dataset_fold{}_{}_{}.hdf5'
+                .format(opt.fold, opt.analysis, opt.channel))
+
+        ff.fit_rhottsplit(train_data, opt.channel, opt.fold)
+
     if opt.mode == 'sklearn_sssplit':
 
         ff.fit_sssplit(train_data, 4, opt.channel, opt.sig_sample)
@@ -86,17 +96,45 @@ def main(opt):
 
         ff.fit_gbc_ttsplit(train_data, opt.channel, opt.sig_sample)
 
+    if opt.mode == 'sklearnNN_multi':
+
+        train_fold = pd.read_hdf('data_Aug14Danny/dataset_fold{}_{}_{}_{}_{}.hdf5'
+                .format(opt.fold, opt.analysis, opt.channel, opt.sig_sample,opt.mjj_training))
+        ff.fit_sklearnNN(train_fold, opt.channel, opt.fold, opt.analysis, opt.sig_sample, opt.mjj_training)
+
     if opt.mode == 'keras_multi':
 
-        train_fold = pd.read_hdf('data/dataset_fold{}_{}_{}_{}.hdf5'
-                .format(opt.fold, opt.analysis, opt.channel, opt.sig_sample))
-        ff.fit_keras(train_fold, opt.channel, opt.fold, opt.analysis, opt.sig_sample)
+        train_fold = pd.read_hdf('data_Aug14Danny/dataset_fold{}_{}_{}_{}_{}.hdf5'
+                .format(opt.fold, opt.analysis, opt.channel, opt.sig_sample,opt.mjj_training))
+        ff.fit_keras(train_fold, opt.channel, opt.fold, opt.analysis, opt.sig_sample, opt.mjj_training)
+
+    if opt.mode == 'tf':
+
+        train_fold = pd.read_hdf('data_Aug14Danny/dataset_fold{}_{}_{}_{}_{}.hdf5'
+                .format(opt.fold, opt.analysis, opt.channel, opt.sig_sample,opt.mjj_training))
+        ff.fit_tf(train_fold, opt.channel, opt.fold, opt.analysis, opt.sig_sample, opt.mjj_training)
+
+    if opt.mode == 'pytorch':
+
+        train_fold = pd.read_hdf('data_Aug14Danny/dataset_fold{}_{}_{}_{}_{}.hdf5'
+                .format(opt.fold, opt.analysis, opt.channel, opt.sig_sample,opt.mjj_training))
+        ff.fit_pytorch(train_fold, opt.channel, opt.fold, opt.analysis, opt.sig_sample, opt.mjj_training)
 
     if opt.mode == 'xgb_multi':
 
         if not opt.kfold:
             ff.fit_multiclass_ttsplit(train_data, opt.analysis, opt.channel, opt.sig_sample)
 
+        elif opt.inc:
+            if opt.era == "2017":
+                train_fold = pd.read_hdf('data_2017/dataset_fold{}_{}_{}_{}.hdf5'
+                        .format(opt.fold, opt.analysis, opt.channel, opt.era))
+            if opt.era == "2016":
+                train_fold = pd.read_hdf('data_Aug14Danny/dataset_fold{}_{}_{}_{}.hdf5'
+                        .format(opt.fold, opt.analysis, opt.channel, opt.era))
+            print 'train_fold used: dataset_fold{}_{}_{}_{}.hdf5'.format(opt.fold, opt.analysis, opt.channel, opt.era)
+            print train_fold.shape
+            ff.fit_multiclass_kfold_inc(train_fold, opt.fold, opt.analysis, opt.channel, opt.sig_sample, opt.era)
         else:
             train_fold = pd.read_hdf('data_Aug14Danny/dataset_fold{}_{}_{}_{}_{}.hdf5'
                     .format(opt.fold, opt.analysis, opt.channel, opt.sig_sample, opt.mjj_training))

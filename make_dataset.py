@@ -4,10 +4,11 @@
 #     python make_dataset.py -c --analysis cpsm --sig_sample powheg --mjj_training low --split --mode xgb_multi --channel tt --kfold --embedding --ff
 # with new sig samples
 #     python make_dataset.py -c --analysis cpsm --sig_sample madgraph --mjj_training low --split --mode xgb_multi --channel tt --kfold --embedding --ff
+# cp decays inc training datasets
+# python make_dataset.py -c --analysis cpsm --sig_sample powheg --mode xgb_multi --channel tt --kfold --embedding --ff --era 2017 --inc 
 
 import random
 import uproot
-import ROOT
 import xgboost as xgb
 import pandas as pd
 import numpy as np
@@ -19,8 +20,7 @@ from root_numpy import array2root
 import json
 from pandas.core.groupby import GroupBy
 # import seaborn as sns
-from mlglue.tree import tree_to_tmva, BDTxgboost, BDTsklearn
-import xgboost2tmva
+import yaml
 
 from sklearn.utils import class_weight
 from sklearn.metrics import classification_report
@@ -69,6 +69,10 @@ def parse_arguments():
         dest='ff', help='Use FF method?')
     parser.add_argument('--mjj_training', action='store', default='low',
         dest='mjj_training', help='Do training for high Mjj or low Mjj events?')
+    parser.add_argument('--era', action='store', default='2016',
+        dest='era', help='Which year to use?')
+    parser.add_argument('--inc', action='store_true', default=False,
+        dest='inc', help='Train inclusively (mjj doesnt matter)?')
 
 
     return parser.parse_args()
@@ -77,17 +81,28 @@ def main(opt):
     ## To create dataset for chosen channel & sig_sample (i.e. boosted or dijet cat)
 
     print '\nCreate dataset for {} channel with {} sig samples for {} mjj training\n'.format(opt.channel, opt.sig_sample, opt.mjj_training)
-    if opt.sig_sample != "madgraph":
+    if opt.sig_sample != "madgraph" and opt.era == "2016":
         sig_files = lf.load_files('./filelist/sig_{}_files.dat'.format(opt.sig_sample))
+    elif opt.era == "2017":
+        sig_files = lf.load_files('./filelist/sig_{}_files_2017.dat'.format(opt.sig_sample))
     else:
         sig_files = lf.load_files('./filelist/sig_{}_{}_files.dat'.format(opt.sig_sample, opt.mjj_training))
-    bkg_files = lf.load_files('./filelist/bkgs_files.dat')
-    data_files = lf.load_files('./filelist/{}_data_files.dat'.format(opt.channel))
-    if opt.embedding:
-        embed_files = lf.load_files("./filelist/embed_{}_files.dat".format(opt.channel))
+    if opt.era == "2016":
+        bkg_files = lf.load_files('./filelist/bkgs_files.dat')
+        data_files = lf.load_files('./filelist/{}_data_files.dat'.format(opt.channel))
+        if opt.embedding:
+            embed_files = lf.load_files("./filelist/embed_{}_files.dat".format(opt.channel))
+    elif opt.era == "2017":
+        bkg_files = lf.load_files('./filelist/bkgs_files_2017.dat')
+        data_files = lf.load_files('./filelist/{}_data_files_2017.dat'.format(opt.channel))
+        if opt.embedding:
+            embed_files = lf.load_files("./filelist/embed_{}_files_2017.dat".format(opt.channel))
 
     # this file contains information about the xsections, lumi and event numbers
-    params_file = json.load(open('Params_2016_smsummer16.json'))
+    if opt.era == "2016":
+        params_file = json.load(open('Params_2016_smsummer16.json'))
+    elif opt.era == "2017":
+        params_file = json.load(open('Params_2017_smsummer17_v5.json'))
     lumi = params_file['MuonEG']['lumi']
 
     # cut_features will only be used for preselection
@@ -156,16 +171,35 @@ def main(opt):
             features = [
                 'pt_1', 'pt_2', 'eta_1', 'eta_2',
                 'mt_1', 'mt_2', 'mt_lep',
-                'm_vis', 'm_sv', 'pt_tt',# 'eta_tt',
-                'eta_h',
-                'met', #'met_dphi_1', 'met_dphi_2',
+                'm_vis', 'm_sv',#'pt_tt',# 'eta_tt',
+                'eta_h','pt_h',
+                'met',# 'met_dphi_1', 'met_dphi_2',
                 'n_jets', 'n_bjets',
                 'pt_vis',
                 'mjj','jdeta',
                 'jpt_1','jpt_2',
                 'dijetpt',
-                # 'jeta_1','jeta_2',
+                'jeta_1','jeta_2',
+                'mt_sv','mt_tot',
+                #'IC_binary_test_4_score','IC_binary_test_4_index'
                 ]
+            # if opt.channel == "tt":
+            #     features = [
+            #         'pt_1', 'pt_2',
+            #         'mt_1', 'mt_lep',
+            #         'm_vis', 'm_sv',#'pt_tt',# 'eta_tt',
+            #         'eta_h','pt_h',
+            #         'met',# 'met_dphi_1', 'met_dphi_2',
+            #         'n_jets', 'n_bjets',
+            #         'pt_vis',
+            #         'mjj','jdeta',
+            #         'jpt_1','jpt_2',
+            #         'dijetpt',
+            #         'jeta_1','jeta_2',
+            #         'opp_sides',
+            #         'mt_sv','mt_tot',
+            #         #'IC_binary_test_4_score','IC_binary_test_4_index'
+            #         ]
         if opt.channel == 'em':
             features.extend(['pzeta','wt_em_qcd'])
         if opt.use_jet_variables:
@@ -253,157 +287,8 @@ def main(opt):
             ))
 
 
-    if opt.mjj_training == 'low' and opt.channel in ['et','mt']:
-        class_dict = {
-            'ggh': ['GluGluToHToTauTau_M-125',
-                'GluGluH2JetsToTauTau_M125_CPmixing_sm'],
-            'qqh': ['VBFHToTauTau_M-125'],
-            'dy': ['DYJetsToLL_M-10-50-LO',
-                'DY1JetsToLL-LO',
-                'DY2JetsToLL-LO',
-                'DY3JetsToLL-LO',
-                'DY4JetsToLL-LO',
-                'DYJetsToLL-LO-ext1',
-                'DYJetsToLL-LO-ext2'],
-            'fake': ['W1JetsToLNu-LO',
-                'W2JetsToLNu-LO-ext',
-                'W2JetsToLNu-LO',
-                'W3JetsToLNu-LO-ext',
-                'W3JetsToLNu-LO',
-                'W4JetsToLNu-LO-ext1',
-                'W4JetsToLNu-LO-ext2',
-                'W4JetsToLNu-LO',
-                'WJetsToLNu-LO-ext',
-                'WJetsToLNu-LO',
-                'SingleMuonB','SingleMuonC',
-                'SingleMuonD','SingleMuonE',
-                'SingleMuonF','SingleMuonG',
-                'SingleMuonHv2','SingleMuonHv3',
-                'SingleElectronB','SingleElectronC',
-                'SingleElectronD','SingleElectronE',
-                'SingleElectronF','SingleElectronG',
-                'SingleElectronHv2','SingleElectronHv3',],
-            'tt': ['TT'],
-            'misc': ['EWKWMinus2Jets_WToLNu-ext1','EWKWMinus2Jets_WToLNu-ext2',
-                'EWKWMinus2Jets_WToLNu','EWKWPlus2Jets_WToLNu-ext1',
-                'EWKWPlus2Jets_WToLNu-ext2','EWKWPlus2Jets_WToLNu',
-                'EWKZ2Jets_ZToLL-ext','EWKZ2Jets_ZToLL',
-                'WWTo1L1Nu2Q','WZJToLLLNu',
-                'WZTo1L1Nu2Q','WZTo1L3Nu',
-                'VVTo2L2Nu-ext1','VVTo2L2Nu',
-                'WZTo2L2Q','ZZTo2L2Q','ZZTo4L-amcat',
-                'GluGluHToWWTo2L2Nu_M-125','ZHToTauTau_M-125',
-                'T-tW','T-t','Tbar-tW','Tbar-t',
-                'WminusHToTauTau_M-125','WplusHToTauTau_M-125',
-                'WGToLNuG-ext',
-                'WGToLNuG',
-                'WGstarToLNuEE',
-                'WGstarToLNuMuMu',
-                'VBFHToWWTo2L2Nu_M-125',
-                ],
-            }
-
-    if opt.mjj_training == 'low' and opt.channel in ['em']:
-        class_dict = {
-            'ggh': ['GluGluToHToTauTau_M-125',
-                'GluGluH2JetsToTauTau_M125_CPmixing_sm'],
-            'qqh': ['VBFHToTauTau_M-125'],
-            'dy': ['DYJetsToLL_M-10-50-LO',
-                'DY1JetsToLL-LO',
-                'DY2JetsToLL-LO',
-                'DY3JetsToLL-LO',
-                'DY4JetsToLL-LO',
-                'DYJetsToLL-LO-ext1',
-                'DYJetsToLL-LO-ext2'],
-            'qcd': ['MuonEGB','MuonEGC',
-                'MuonEGD','MuonEGE',
-                'MuonEGF','MuonEGG',
-                'MuonEGHv2','MuonEGHv3'],
-            'tt': ['TT'],
-            'misc': ['EWKWMinus2Jets_WToLNu-ext1','EWKWMinus2Jets_WToLNu-ext2',
-                'EWKWMinus2Jets_WToLNu','EWKWPlus2Jets_WToLNu-ext1',
-                'EWKWPlus2Jets_WToLNu-ext2','EWKWPlus2Jets_WToLNu',
-                'EWKZ2Jets_ZToLL-ext','EWKZ2Jets_ZToLL',
-                'WWTo1L1Nu2Q','WZJToLLLNu',
-                'WZTo1L1Nu2Q','WZTo1L3Nu',
-                'VVTo2L2Nu-ext1','VVTo2L2Nu',
-                'WZTo2L2Q','ZZTo2L2Q','ZZTo4L-amcat',
-                'GluGluHToWWTo2L2Nu_M-125','ZHToTauTau_M-125',
-                'T-tW','T-t','Tbar-tW','Tbar-t',
-                'WminusHToTauTau_M-125','WplusHToTauTau_M-125',
-                'WGToLNuG-ext',
-                'WGToLNuG',
-                'WGstarToLNuEE',
-                'WGstarToLNuMuMu',
-                'VBFHToWWTo2L2Nu_M-125',
-                # w
-                'W1JetsToLNu-LO',
-                'W2JetsToLNu-LO-ext',
-                'W2JetsToLNu-LO',
-                'W3JetsToLNu-LO-ext',
-                'W3JetsToLNu-LO',
-                'W4JetsToLNu-LO-ext1',
-                'W4JetsToLNu-LO-ext2',
-                'W4JetsToLNu-LO',
-                'WJetsToLNu-LO-ext',
-                'WJetsToLNu-LO',
-                ]
-            }
-
-    if opt.channel == 'tt':
-        class_dict = {
-            'ggh': ['GluGluToHToTauTau_M-125',
-                'GluGluH2JetsToTauTau_M125_CPmixing_sm'],
-            'qqh': ['VBFHToTauTau_M-125'],
-            'dy': ['DYJetsToLL_M-10-50-LO',
-                'DY1JetsToLL-LO',
-                'DY2JetsToLL-LO',
-                'DY3JetsToLL-LO',
-                'DY4JetsToLL-LO',
-                'DYJetsToLL-LO-ext1',
-                'DYJetsToLL-LO-ext2'],
-            'qcd': ['TauB','TauC',
-                'TauD','TauE',
-                'TauF','TauG',
-                'TauHv2','TauHv3',
-                'SingleMuonB','SingleMuonC',
-                'SingleMuonD','SingleMuonE',
-                'SingleMuonF','SingleMuonG',
-                'SingleMuonHv2','SingleMuonHv3',
-                'SingleElectronB','SingleElectronC',
-                'SingleElectronD','SingleElectronE',
-                'SingleElectronF','SingleElectronG',
-                'SingleElectronHv2','SingleElectronHv3',
-                'MuonEGB','MuonEGC',
-                'MuonEGD','MuonEGE',
-                'MuonEGF','MuonEGG',
-                'MuonEGHv2','MuonEGHv3'],
-            'misc': ['EWKWMinus2Jets_WToLNu-ext1','EWKWMinus2Jets_WToLNu-ext2',
-                'EWKWMinus2Jets_WToLNu','EWKWPlus2Jets_WToLNu-ext1',
-                'EWKWPlus2Jets_WToLNu-ext2','EWKWPlus2Jets_WToLNu',
-                'EWKZ2Jets_ZToLL-ext','EWKZ2Jets_ZToLL',
-                'WWTo1L1Nu2Q','WZJToLLLNu',
-                'WZTo1L1Nu2Q','WZTo1L3Nu',
-                'VVTo2L2Nu-ext1','VVTo2L2Nu',
-                'WZTo2L2Q','ZZTo2L2Q','ZZTo4L-amcat',
-                'GluGluHToWWTo2L2Nu_M-125','ZHToTauTau_M-125',
-                'T-tW','T-t','Tbar-tW','Tbar-t',
-                # w
-                'W1JetsToLNu-LO','W2JetsToLNu-LO-ext','W2JetsToLNu-LO',
-                'W3JetsToLNu-LO-ext','W3JetsToLNu-LO','W4JetsToLNu-LO-ext1',
-                'W4JetsToLNu-LO-ext2','W4JetsToLNu-LO','WGToLNuG-ext',
-                'WGToLNuG','WGstarToLNuEE','WGstarToLNuMuMu',
-                'WJetsToLNu-LO-ext','WJetsToLNu-LO','WminusHToTauTau_M-125',
-                'WplusHToTauTau_M-125',
-                # tt
-                'TT',
-                # vbf bkg
-                'VBFHToWWTo2L2Nu_M-125',
-                ]
-            }
-
-    if opt.mjj_training == 'high':
-        if opt.channel in ['mt','et']:
+    if opt.era == "2016":
+        if opt.mjj_training == 'low' and opt.channel in ['et','mt']:
             class_dict = {
                 'ggh': ['GluGluToHToTauTau_M-125',
                     'GluGluH2JetsToTauTau_M125_CPmixing_sm'],
@@ -415,8 +300,104 @@ def main(opt):
                     'DY4JetsToLL-LO',
                     'DYJetsToLL-LO-ext1',
                     'DYJetsToLL-LO-ext2'],
+                'fake': ['W1JetsToLNu-LO',
+                    'W2JetsToLNu-LO-ext',
+                    'W2JetsToLNu-LO',
+                    'W3JetsToLNu-LO-ext',
+                    'W3JetsToLNu-LO',
+                    'W4JetsToLNu-LO-ext1',
+                    'W4JetsToLNu-LO-ext2',
+                    'W4JetsToLNu-LO',
+                    'WJetsToLNu-LO-ext',
+                    'WJetsToLNu-LO',
+                    'SingleMuonB','SingleMuonC',
+                    'SingleMuonD','SingleMuonE',
+                    'SingleMuonF','SingleMuonG',
+                    'SingleMuonHv2','SingleMuonHv3',
+                    'SingleElectronB','SingleElectronC',
+                    'SingleElectronD','SingleElectronE',
+                    'SingleElectronF','SingleElectronG',
+                    'SingleElectronHv2','SingleElectronHv3',],
+                'tt': ['TT'],
+                'misc': ['EWKWMinus2Jets_WToLNu-ext1','EWKWMinus2Jets_WToLNu-ext2',
+                    'EWKWMinus2Jets_WToLNu','EWKWPlus2Jets_WToLNu-ext1',
+                    'EWKWPlus2Jets_WToLNu-ext2','EWKWPlus2Jets_WToLNu',
+                    'EWKZ2Jets_ZToLL-ext','EWKZ2Jets_ZToLL',
+                    'WWTo1L1Nu2Q','WZJToLLLNu',
+                    'WZTo1L1Nu2Q','WZTo1L3Nu',
+                    'VVTo2L2Nu-ext1','VVTo2L2Nu',
+                    'WZTo2L2Q','ZZTo2L2Q','ZZTo4L-amcat',
+                    'GluGluHToWWTo2L2Nu_M-125','ZHToTauTau_M-125',
+                    'T-tW','T-t','Tbar-tW','Tbar-t',
+                    'WminusHToTauTau_M-125','WplusHToTauTau_M-125',
+                    'WGToLNuG-ext',
+                    'WGToLNuG',
+                    'WGstarToLNuEE',
+                    'WGstarToLNuMuMu',
+                    'VBFHToWWTo2L2Nu_M-125',
+                    ],
+                }
 
-                'fake': ['TauB','TauC',
+        if opt.mjj_training == 'low' and opt.channel in ['em']:
+            class_dict = {
+                'ggh': ['GluGluToHToTauTau_M-125',
+                    'GluGluH2JetsToTauTau_M125_CPmixing_sm'],
+                'qqh': ['VBFHToTauTau_M-125'],
+                'dy': ['DYJetsToLL_M-10-50-LO',
+                    'DY1JetsToLL-LO',
+                    'DY2JetsToLL-LO',
+                    'DY3JetsToLL-LO',
+                    'DY4JetsToLL-LO',
+                    'DYJetsToLL-LO-ext1',
+                    'DYJetsToLL-LO-ext2'],
+                'qcd': ['MuonEGB','MuonEGC',
+                    'MuonEGD','MuonEGE',
+                    'MuonEGF','MuonEGG',
+                    'MuonEGHv2','MuonEGHv3'],
+                'tt': ['TT'],
+                'misc': ['EWKWMinus2Jets_WToLNu-ext1','EWKWMinus2Jets_WToLNu-ext2',
+                    'EWKWMinus2Jets_WToLNu','EWKWPlus2Jets_WToLNu-ext1',
+                    'EWKWPlus2Jets_WToLNu-ext2','EWKWPlus2Jets_WToLNu',
+                    'EWKZ2Jets_ZToLL-ext','EWKZ2Jets_ZToLL',
+                    'WWTo1L1Nu2Q','WZJToLLLNu',
+                    'WZTo1L1Nu2Q','WZTo1L3Nu',
+                    'VVTo2L2Nu-ext1','VVTo2L2Nu',
+                    'WZTo2L2Q','ZZTo2L2Q','ZZTo4L-amcat',
+                    'GluGluHToWWTo2L2Nu_M-125','ZHToTauTau_M-125',
+                    'T-tW','T-t','Tbar-tW','Tbar-t',
+                    'WminusHToTauTau_M-125','WplusHToTauTau_M-125',
+                    'WGToLNuG-ext',
+                    'WGToLNuG',
+                    'WGstarToLNuEE',
+                    'WGstarToLNuMuMu',
+                    'VBFHToWWTo2L2Nu_M-125',
+                    # w
+                    'W1JetsToLNu-LO',
+                    'W2JetsToLNu-LO-ext',
+                    'W2JetsToLNu-LO',
+                    'W3JetsToLNu-LO-ext',
+                    'W3JetsToLNu-LO',
+                    'W4JetsToLNu-LO-ext1',
+                    'W4JetsToLNu-LO-ext2',
+                    'W4JetsToLNu-LO',
+                    'WJetsToLNu-LO-ext',
+                    'WJetsToLNu-LO',
+                    ]
+                }
+
+        if opt.channel == 'tt':
+            class_dict = {
+                'ggh': ['GluGluToHToTauTau_M-125',
+                    'GluGluH2JetsToTauTau_M125_CPmixing_sm'],
+                'qqh': ['VBFHToTauTau_M-125'],
+                'dy': ['DYJetsToLL_M-10-50-LO',
+                    'DY1JetsToLL-LO',
+                    'DY2JetsToLL-LO',
+                    'DY3JetsToLL-LO',
+                    'DY4JetsToLL-LO',
+                    'DYJetsToLL-LO-ext1',
+                    'DYJetsToLL-LO-ext2'],
+                'qcd': ['TauB','TauC',
                     'TauD','TauE',
                     'TauF','TauG',
                     'TauHv2','TauHv3',
@@ -431,54 +412,6 @@ def main(opt):
                     'MuonEGB','MuonEGC',
                     'MuonEGD','MuonEGE',
                     'MuonEGF','MuonEGG',
-                    'MuonEGHv2','MuonEGHv3',
-                    'W1JetsToLNu-LO',
-                    'W2JetsToLNu-LO-ext',
-                    'W2JetsToLNu-LO',
-                    'W3JetsToLNu-LO-ext',
-                    'W3JetsToLNu-LO',
-                    'W4JetsToLNu-LO-ext1',
-                    'W4JetsToLNu-LO-ext2',
-                    'W4JetsToLNu-LO',
-                    'WJetsToLNu-LO-ext',
-                    'WJetsToLNu-LO',
-                    ],
-                'misc': ['EWKWMinus2Jets_WToLNu-ext1','EWKWMinus2Jets_WToLNu-ext2',
-                    'EWKWMinus2Jets_WToLNu','EWKWPlus2Jets_WToLNu-ext1',
-                    'EWKWPlus2Jets_WToLNu-ext2','EWKWPlus2Jets_WToLNu',
-                    'EWKZ2Jets_ZToLL-ext','EWKZ2Jets_ZToLL',
-                    'WWTo1L1Nu2Q','WZJToLLLNu',
-                    'WZTo1L1Nu2Q','WZTo1L3Nu',
-                    'VVTo2L2Nu-ext1','VVTo2L2Nu',
-                    'WZTo2L2Q','ZZTo2L2Q','ZZTo4L-amcat',
-                    'GluGluHToWWTo2L2Nu_M-125','ZHToTauTau_M-125',
-                    'T-tW','T-t','Tbar-tW','Tbar-t',
-                    'WminusHToTauTau_M-125','WplusHToTauTau_M-125',
-                    'WGToLNuG-ext',
-                    'WGToLNuG',
-                    'WGstarToLNuEE',
-                    'WGstarToLNuMuMu',
-                    # vbf bkg
-                    'VBFHToWWTo2L2Nu_M-125',
-                    ],
-                }
-        if opt.channel in ['em']:
-            class_dict = {
-                'ggh': ['GluGluToHToTauTau_M-125',
-                    'GluGluH2JetsToTauTau_M125_CPmixing_sm'],
-                'qqh': ['VBFHToTauTau_M-125'],
-                'dy': ['DYJetsToLL_M-10-50-LO',
-                    'DY1JetsToLL-LO',
-                    'DY2JetsToLL-LO',
-                    'DY3JetsToLL-LO',
-                    'DY4JetsToLL-LO',
-                    'DYJetsToLL-LO-ext1',
-                    'DYJetsToLL-LO-ext2'],
-                'tt': ['TT'],
-                'qcd': [
-                    'MuonEGB','MuonEGC',
-                    'MuonEGD','MuonEGE',
-                    'MuonEGF','MuonEGG',
                     'MuonEGHv2','MuonEGHv3'],
                 'misc': ['EWKWMinus2Jets_WToLNu-ext1','EWKWMinus2Jets_WToLNu-ext2',
                     'EWKWMinus2Jets_WToLNu','EWKWPlus2Jets_WToLNu-ext1',
@@ -486,60 +419,176 @@ def main(opt):
                     'EWKZ2Jets_ZToLL-ext','EWKZ2Jets_ZToLL',
                     'WWTo1L1Nu2Q','WZJToLLLNu',
                     'WZTo1L1Nu2Q','WZTo1L3Nu',
-                    'T-tW','T-t','Tbar-tW','Tbar-t',
                     'VVTo2L2Nu-ext1','VVTo2L2Nu',
                     'WZTo2L2Q','ZZTo2L2Q','ZZTo4L-amcat',
                     'GluGluHToWWTo2L2Nu_M-125','ZHToTauTau_M-125',
-                    'WminusHToTauTau_M-125','WplusHToTauTau_M-125',
-                    'WGToLNuG-ext',
-                    'WGToLNuG',
-                    'WGstarToLNuEE',
-                    'WGstarToLNuMuMu',
+                    'T-tW','T-t','Tbar-tW','Tbar-t',
                     # w
-                    'W1JetsToLNu-LO',
-                    'W2JetsToLNu-LO-ext',
-                    'W2JetsToLNu-LO',
-                    'W3JetsToLNu-LO-ext',
-                    'W3JetsToLNu-LO',
-                    'W4JetsToLNu-LO-ext1',
-                    'W4JetsToLNu-LO-ext2',
-                    'W4JetsToLNu-LO',
-                    'WJetsToLNu-LO-ext',
-                    'WJetsToLNu-LO',
+                    'W1JetsToLNu-LO','W2JetsToLNu-LO-ext','W2JetsToLNu-LO',
+                    'W3JetsToLNu-LO-ext','W3JetsToLNu-LO','W4JetsToLNu-LO-ext1',
+                    'W4JetsToLNu-LO-ext2','W4JetsToLNu-LO','WGToLNuG-ext',
+                    'WGToLNuG','WGstarToLNuEE','WGstarToLNuMuMu',
+                    'WJetsToLNu-LO-ext','WJetsToLNu-LO','WminusHToTauTau_M-125',
+                    'WplusHToTauTau_M-125',
+                    # tt
+                    'TT',
                     # vbf bkg
                     'VBFHToWWTo2L2Nu_M-125',
-                    ],
+                    ]
                 }
-    if opt.embedding:
-        class_dict["embed"] = [
-                "EmbeddingTauTauB","EmbeddingTauTauC","EmbeddingTauTauD","EmbeddingTauTauE","EmbeddingTauTauF","EmbeddingTauTauG","EmbeddingTauTauH",
-                "EmbeddingMuTauB","EmbeddingMuTauC","EmbeddingMuTauD","EmbeddingMuTauE","EmbeddingMuTauF","EmbeddingMuTauG","EmbeddingMuTauH",
-                "EmbeddingElTauB","EmbeddingElTauC","EmbeddingElTauD","EmbeddingElTauE","EmbeddingElTauF","EmbeddingElTauG","EmbeddingElTauH",
-                "EmbeddingElMuB","EmbeddingElMuC","EmbeddingElMuD","EmbeddingElMuE","EmbeddingElMuF","EmbeddingElMuG","EmbeddingElMuH",
-                ]
-    if opt.sig_sample == "madgraph":
-        class_dict["ggh"] = [
-                "GluGluToHToTauTau_M125_amcatnloFXFX",
-                "GluGluToPseudoscalarHToTauTau_M125_amcatnloFXFX",
-                "GluGluToMaxmixHToTauTau_M125_amcatnloFXFX",
-                "GluGluToHToTauTauPlusTwoJets_M125_amcatnloFXFX",
-                "GluGluToPseudoscalarHToTauTauPlusTwoJets_M125_amcatnloFXFX",
-                "GluGluToMaxmixHToTauTauPlusTwoJets_M125_amcatnloFXFX",
-                ]
 
+        if opt.mjj_training == 'high':
+            if opt.channel in ['mt','et']:
+                class_dict = {
+                    'ggh': ['GluGluToHToTauTau_M-125',
+                        'GluGluH2JetsToTauTau_M125_CPmixing_sm'],
+                    'qqh': ['VBFHToTauTau_M-125'],
+                    'dy': ['DYJetsToLL_M-10-50-LO',
+                        'DY1JetsToLL-LO',
+                        'DY2JetsToLL-LO',
+                        'DY3JetsToLL-LO',
+                        'DY4JetsToLL-LO',
+                        'DYJetsToLL-LO-ext1',
+                        'DYJetsToLL-LO-ext2'],
+
+                    'fake': ['TauB','TauC',
+                        'TauD','TauE',
+                        'TauF','TauG',
+                        'TauHv2','TauHv3',
+                        'SingleMuonB','SingleMuonC',
+                        'SingleMuonD','SingleMuonE',
+                        'SingleMuonF','SingleMuonG',
+                        'SingleMuonHv2','SingleMuonHv3',
+                        'SingleElectronB','SingleElectronC',
+                        'SingleElectronD','SingleElectronE',
+                        'SingleElectronF','SingleElectronG',
+                        'SingleElectronHv2','SingleElectronHv3',
+                        'MuonEGB','MuonEGC',
+                        'MuonEGD','MuonEGE',
+                        'MuonEGF','MuonEGG',
+                        'MuonEGHv2','MuonEGHv3',
+                        'W1JetsToLNu-LO',
+                        'W2JetsToLNu-LO-ext',
+                        'W2JetsToLNu-LO',
+                        'W3JetsToLNu-LO-ext',
+                        'W3JetsToLNu-LO',
+                        'W4JetsToLNu-LO-ext1',
+                        'W4JetsToLNu-LO-ext2',
+                        'W4JetsToLNu-LO',
+                        'WJetsToLNu-LO-ext',
+                        'WJetsToLNu-LO',
+                        ],
+                    'misc': ['EWKWMinus2Jets_WToLNu-ext1','EWKWMinus2Jets_WToLNu-ext2',
+                        'EWKWMinus2Jets_WToLNu','EWKWPlus2Jets_WToLNu-ext1',
+                        'EWKWPlus2Jets_WToLNu-ext2','EWKWPlus2Jets_WToLNu',
+                        'EWKZ2Jets_ZToLL-ext','EWKZ2Jets_ZToLL',
+                        'WWTo1L1Nu2Q','WZJToLLLNu',
+                        'WZTo1L1Nu2Q','WZTo1L3Nu',
+                        'VVTo2L2Nu-ext1','VVTo2L2Nu',
+                        'WZTo2L2Q','ZZTo2L2Q','ZZTo4L-amcat',
+                        'GluGluHToWWTo2L2Nu_M-125','ZHToTauTau_M-125',
+                        'T-tW','T-t','Tbar-tW','Tbar-t',
+                        'WminusHToTauTau_M-125','WplusHToTauTau_M-125',
+                        'WGToLNuG-ext',
+                        'WGToLNuG',
+                        'WGstarToLNuEE',
+                        'WGstarToLNuMuMu',
+                        # vbf bkg
+                        'VBFHToWWTo2L2Nu_M-125',
+                        ],
+                    }
+            if opt.channel in ['em']:
+                class_dict = {
+                    'ggh': ['GluGluToHToTauTau_M-125',
+                        'GluGluH2JetsToTauTau_M125_CPmixing_sm'],
+                    'qqh': ['VBFHToTauTau_M-125'],
+                    'dy': ['DYJetsToLL_M-10-50-LO',
+                        'DY1JetsToLL-LO',
+                        'DY2JetsToLL-LO',
+                        'DY3JetsToLL-LO',
+                        'DY4JetsToLL-LO',
+                        'DYJetsToLL-LO-ext1',
+                        'DYJetsToLL-LO-ext2'],
+                    'tt': ['TT'],
+                    'qcd': [
+                        'MuonEGB','MuonEGC',
+                        'MuonEGD','MuonEGE',
+                        'MuonEGF','MuonEGG',
+                        'MuonEGHv2','MuonEGHv3'],
+                    'misc': ['EWKWMinus2Jets_WToLNu-ext1','EWKWMinus2Jets_WToLNu-ext2',
+                        'EWKWMinus2Jets_WToLNu','EWKWPlus2Jets_WToLNu-ext1',
+                        'EWKWPlus2Jets_WToLNu-ext2','EWKWPlus2Jets_WToLNu',
+                        'EWKZ2Jets_ZToLL-ext','EWKZ2Jets_ZToLL',
+                        'WWTo1L1Nu2Q','WZJToLLLNu',
+                        'WZTo1L1Nu2Q','WZTo1L3Nu',
+                        'T-tW','T-t','Tbar-tW','Tbar-t',
+                        'VVTo2L2Nu-ext1','VVTo2L2Nu',
+                        'WZTo2L2Q','ZZTo2L2Q','ZZTo4L-amcat',
+                        'GluGluHToWWTo2L2Nu_M-125','ZHToTauTau_M-125',
+                        'WminusHToTauTau_M-125','WplusHToTauTau_M-125',
+                        'WGToLNuG-ext',
+                        'WGToLNuG',
+                        'WGstarToLNuEE',
+                        'WGstarToLNuMuMu',
+                        # w
+                        'W1JetsToLNu-LO',
+                        'W2JetsToLNu-LO-ext',
+                        'W2JetsToLNu-LO',
+                        'W3JetsToLNu-LO-ext',
+                        'W3JetsToLNu-LO',
+                        'W4JetsToLNu-LO-ext1',
+                        'W4JetsToLNu-LO-ext2',
+                        'W4JetsToLNu-LO',
+                        'WJetsToLNu-LO-ext',
+                        'WJetsToLNu-LO',
+                        # vbf bkg
+                        'VBFHToWWTo2L2Nu_M-125',
+                        ],
+                    }
+        if opt.embedding:
+            class_dict["embed"] = [
+                    "EmbeddingTauTauB","EmbeddingTauTauC","EmbeddingTauTauD","EmbeddingTauTauE","EmbeddingTauTauF","EmbeddingTauTauG","EmbeddingTauTauH",
+                    "EmbeddingMuTauB","EmbeddingMuTauC","EmbeddingMuTauD","EmbeddingMuTauE","EmbeddingMuTauF","EmbeddingMuTauG","EmbeddingMuTauH",
+                    "EmbeddingElTauB","EmbeddingElTauC","EmbeddingElTauD","EmbeddingElTauE","EmbeddingElTauF","EmbeddingElTauG","EmbeddingElTauH",
+                    "EmbeddingElMuB","EmbeddingElMuC","EmbeddingElMuD","EmbeddingElMuE","EmbeddingElMuF","EmbeddingElMuG","EmbeddingElMuH",
+                    ]
+        if opt.sig_sample == "madgraph":
+            class_dict["ggh"] = [
+                    "GluGluToHToTauTau_M125_amcatnloFXFX",
+                    "GluGluToPseudoscalarHToTauTau_M125_amcatnloFXFX",
+                    "GluGluToMaxmixHToTauTau_M125_amcatnloFXFX",
+                    "GluGluToHToTauTauPlusTwoJets_M125_amcatnloFXFX",
+                    "GluGluToPseudoscalarHToTauTauPlusTwoJets_M125_amcatnloFXFX",
+                    "GluGluToMaxmixHToTauTauPlusTwoJets_M125_amcatnloFXFX",
+                    ]
+    elif opt.era == "2017":
+        class_dict = {}
+        with open("2017_training_samples_{}.yaml".format(opt.channel), "r") as f:
+            try:
+                full_class_dict = yaml.load(f)
+                for key, values in full_class_dict.iteritems():
+                    print key
+                    print values
+                    class_dict[key] = values
+            except yaml.YAMLError as exc:
+                print exc
 
     # directory of the files (usually /vols/cms/)
-    # path = '/vols/cms/akd116/Offline/output/SM/2018/Mar19'
-    # path = '/vols/cms/akd116/Offline/output/SM/2018/Apr24_1'
-    # path = '/vols/cms/akd116/Offline/output/SM/2018/May17_2'
-    # path = '/vols/cms/akd116/Offline/output/SM/2018/Jun22_2016_Danny'
-    path = '/vols/cms/akd116/Offline/output/SM/2018/Aug14_2016_Danny_v3'
+    if opt.era == "2016":
+        # path = '/vols/cms/akd116/Offline/output/SM/2018/Mar19'
+        # path = '/vols/cms/akd116/Offline/output/SM/2018/Apr24_1'
+        # path = '/vols/cms/akd116/Offline/output/SM/2018/May17_2'
+        # path = '/vols/cms/akd116/Offline/output/SM/2018/Jun22_2016_Danny'
+        # path = '/vols/cms/akd116/Offline/output/SM/2018/Aug14_2016_Danny_v3'
+        path = '/vols/cms/akd116/Offline/output/SM/2018/Feb12_2016/'
+    elif opt.era == "2017":
+        path = '/vols/cms/dw515/Offline/output/SM/Nov27_2017/'
 
     ggh = []
     for sig in sig_files:
         print sig
         sig_tmp = lf.load_mc_ntuple(
-                '{}/{}_{}_2016.root'.format(path, sig, opt.channel),
+                '{}/{}_{}_{}.root'.format(path, sig, opt.channel, opt.era),
                 'ntuple',
                 features,
                 opt.mjj_training,
@@ -573,7 +622,7 @@ def main(opt):
                         "GluGluToPseudoscalarHToTauTauPlusTwoJets_M125_amcatnloFXFX",
                         "GluGluToMaxmixHToTauTauPlusTwoJets_M125_amcatnloFXFX",
                         ]:
-                    sig_tmp['wt_xs'] = np.fabs(sig_tmp['wt']) * (0.5 * lumi)/(4723705.+4723705.+4788426.)
+                    sig_tmp['wt_xs'] = sig_tmp['wt'] * (0.5 * lumi)/((4723705.+4723705.+4788426.))
 
                 #if sig == "GluGluToHToTauTauPlusTwoJets_M125_amcatnloFXFX":
                 #    sig_tmp['wt_xs'] = sig_tmp['wt'] * (0.5 * lumi)/4808923. # when taking abs of neg wts this may not be the right evt number (factor 3 smaller)
@@ -630,7 +679,7 @@ def main(opt):
         if bkg in ["VBFHToTauTau_M-125","WminusHToTauTau_M-125","WplusHToTauTau_M-125","ZHToTauTau_M-125"]:
             isSignal = True
         bkg_tmp = lf.load_mc_ntuple(
-                '{}/{}_{}_2016.root'.format(path, bkg, opt.channel),
+                '{}/{}_{}_{}.root'.format(path, bkg, opt.channel, opt.era),
                 'ntuple',
                 features,
                 opt.mjj_training,
@@ -645,19 +694,31 @@ def main(opt):
         if opt.mode in ['keras_multi', 'xgb_multi'] and bkg in [
             'DYJetsToLL_M-10-50-LO','DY1JetsToLL-LO','DY2JetsToLL-LO',
             'DY3JetsToLL-LO','DY4JetsToLL-LO','DYJetsToLL-LO-ext1',
-            'DYJetsToLL-LO-ext2',]:
+            'DYJetsToLL-LO-ext2',
+            # 2017
+            'DYJetsToLL-LO',
+            'DYJetsToLL-LO-ext1',
+            'DY1JetsToLL-LO',
+            'DY2JetsToLL-LO',
+            'DY2JetsToLL-LO-ext',
+            'DY3JetsToLL-LO',
+            'DY3JetsToLL-LO-ext',
+            'DY4JetsToLL-LO',
+            'DYJetsToLL_M-10-50-LO',
+            'DYJetsToLL_M-10-50-LO-ext1',
+            ]:
 
             ztt_tmp = pd.DataFrame()
             zl_tmp = pd.DataFrame()
             zj_tmp = pd.DataFrame()
             zll_tmp = pd.DataFrame()
 
-        if opt.channel in ['et','mt'] and opt.mode in ['keras_multi', 'xgb_multi'] and bkg in ['TT']:
+        if opt.channel in ['et','mt'] and opt.mode in ['keras_multi', 'xgb_multi'] and bkg in ['TT','TTTo2L2Nu','TTToHadronic','TTToSemiLeptonic']:
 
             ttt_tmp = pd.DataFrame()
             ttj_tmp = pd.DataFrame()
 
-        if opt.channel in ['et','mt'] and opt.mode in ['keras_multi', 'xgb_multi'] and bkg in ['VVTo2L2Nu-ext1','VVTo2L2Nu',]:
+        if opt.channel in ['et','mt'] and opt.mode in ['keras_multi', 'xgb_multi'] and bkg in ['VVTo2L2Nu-ext1','VVTo2L2Nu','ZZTo2L2Nu','WWTo2L2Nu',]:
 
             vvt_tmp = pd.DataFrame()
             vvj_tmp = pd.DataFrame()
@@ -684,7 +745,19 @@ def main(opt):
             if opt.mode in ['keras_multi', 'xgb_multi'] and bkg in [
                 'DYJetsToLL_M-10-50-LO','DY1JetsToLL-LO','DY2JetsToLL-LO',
                 'DY3JetsToLL-LO','DY4JetsToLL-LO','DYJetsToLL-LO-ext1',
-                'DYJetsToLL-LO-ext2',]:
+                'DYJetsToLL-LO-ext2',
+                # 2017
+                'DYJetsToLL-LO',
+                'DYJetsToLL-LO-ext1',
+                'DY1JetsToLL-LO',
+                'DY2JetsToLL-LO',
+                'DY2JetsToLL-LO-ext',
+                'DY3JetsToLL-LO',
+                'DY3JetsToLL-LO-ext',
+                'DY4JetsToLL-LO',
+                'DYJetsToLL_M-10-50-LO',
+                'DYJetsToLL_M-10-50-LO-ext1',
+                ]:
 
                 if opt.channel == 'tt':
                     ztt_tmp = bkg_tmp[(bkg_tmp['gen_match_1'] == 5) & (bkg_tmp['gen_match_2'] == 5)]
@@ -710,7 +783,7 @@ def main(opt):
 
                     zl_tmp = bkg_tmp[(bkg_tmp['gen_match_2'] != 6) & (bkg_tmp['gen_match_2'] != 5)]
                     zl_tmp.reset_index(drop=True)
-                    if opt.mjj_training == 'low':
+                    if opt.mjj_training == 'low' or opt.channel == "et":
                         zl_tmp['multi_class'] = 'zll' ## zl --> zll
                     else:
                         zl_tmp['multi_class'] = 'misc' ## zl --> misc
@@ -739,7 +812,7 @@ def main(opt):
                     for zsplit in [ztt_tmp, zl_tmp, zll_tmp]:
                         bkgs_tmp.append(zsplit)
 
-            elif opt.channel in ['et','mt'] and opt.mode in ['keras_multi', 'xgb_multi'] and bkg in ['TT']:
+            elif opt.channel in ['et','mt'] and opt.mode in ['keras_multi', 'xgb_multi'] and bkg in ['TT','TTTo2L2Nu','TTToHadronic','TTToSemiLeptonic',]:
                 ttt_tmp = bkg_tmp[(bkg_tmp['gen_match_2'] < 6)]
                 ttt_tmp.reset_index(drop=True)
                 ttt_tmp['multi_class'] = 'tt'
@@ -756,7 +829,7 @@ def main(opt):
                         bkgs_tmp.append(fake_split)
 
 
-            elif opt.channel in ['et','mt'] and opt.mode in ['keras_multi', 'xgb_multi'] and bkg in ['VVTo2L2Nu-ext1','VVTo2L2Nu',]:
+            elif opt.channel in ['et','mt'] and opt.mode in ['keras_multi', 'xgb_multi'] and bkg in ['VVTo2L2Nu-ext1','VVTo2L2Nu','ZZTo2L2Nu','WWTo2L2Nu',]:
                 vvt_tmp = bkg_tmp[(bkg_tmp['gen_match_2'] < 6)]
                 vvt_tmp.reset_index(drop=True)
                 vvt_tmp['multi_class'] = 'misc'
@@ -786,7 +859,7 @@ def main(opt):
         for embed in embed_files:
             print embed
             embed_tmp = lf.load_mc_ntuple(
-                    '{}/{}_{}_2016.root'.format(path, embed, opt.channel),
+                    '{}/{}_{}_{}.root'.format(path, embed, opt.channel, opt.era),
                     'ntuple',
                     features,
                     opt.mjj_training,
@@ -838,7 +911,7 @@ def main(opt):
         for data in data_files:
             print data
             data_tmp = lf.load_ff_ntuple(
-                    '{}/{}_{}_2016.root'.format(path, data, opt.channel),
+                    '{}/{}_{}_{}.root'.format(path, data, opt.channel, opt.era),
                     'ntuple',
                     features,
                     opt.mjj_training,
@@ -868,7 +941,7 @@ def main(opt):
         for data in data_files:
             print data
             data_tmp = lf.load_data_ntuple(
-                    '{}/{}_{}_2016.root'.format(path, data, opt.channel),
+                    '{}/{}_{}_{}.root'.format(path, data, opt.channel, opt.era),
                     'ntuple',
                     features,
                     opt.mjj_training,
@@ -911,11 +984,6 @@ def main(opt):
     print bkgs.shape
 
 
-    # pf.plot_signal_background(
-    #         ggh, bkgs, 'm_sv',
-    #         opt.channel, opt.sig_sample,
-    #         bins=100
-            # )
 
     # pf.plot_roc_cutbased(ggh, bkgs, 'm_sv', opt.channel, opt.sig_sample)
 
@@ -942,9 +1010,33 @@ def main(opt):
     # X['deta'] = np.abs(X['eta_1'] - X['eta_2'])
     # X['class'] = y.values
 
-    # make zeppenfeld variable
+    # # make zeppenfeld variable
     # X["zfeld"] = np.fabs(X.eta_h - (X.jeta_1 + X.jeta_2)/2.)
-    # print X["zfeld"]
+    # # print X["zfeld"]
+    # # make centrality variable
+    # X["centrality"] = np.exp(-4*(X.zfeld/np.fabs(X.jdeta))**2)
+    # # make new variable combinatinos
+    # X["mjj_jdeta"] = X.mjj * X.jdeta
+    # X["dijetpt_pth"] = X.dijetpt * X.pt_h
+    # X["dijetpt_jpt1"] = X.dijetpt * X.jpt_1
+    # # X["exp_dijetpt_jpt1"] = np.exp(-30000*(X.dijetpt/X.jpt_1))
+
+
+    # pf.plot_signal_background(
+    #         X[X.multi_class == "ggh"], X[X.multi_class == "qqh"], 'dijetpt_pth',
+    #         opt.channel, opt.sig_sample,
+    #         bins=100
+    #         )
+    # pf.plot_signal_background(
+    #         X[X.multi_class == "ggh"], X[X.multi_class == "qqh"], 'exp_dijetpt_jpt1',
+    #         opt.channel, opt.sig_sample,
+    #         bins=100
+    #         )
+    # pf.plot_signal_background(
+    #         X[X.multi_class == "ggh"], X[X.multi_class != "ggh"], 'centrality',
+    #         opt.channel, opt.sig_sample,
+    #         bins=100
+    #         )
 
     scaler = StandardScaler()
     if opt.channel != "em":
@@ -978,49 +1070,37 @@ def main(opt):
     ## divide datasets
     if opt.kfold:
 
-
         # get even event numbers
         X_fold0 = X[(X['event'] % 2 == 0)]#.drop(['event'], axis=1)
 
         # get odd event numbers
         X_fold1 = X[(X['event'] % 2 == 1)]#.drop(['event'], axis=1)
 
-        # fit scaler for later use
-        # scaler0 = StandardScaler()
-        # if opt.channel != "em":
-        #     scaled_fit0 = scaler0.fit(X_fold0.drop([
-        #         'wt','wt_xs', 'process', 'multi_class','event',
-        #         'gen_match_1', 'gen_match_2',
-        #         ], axis=1).as_matrix())
-        # else:
-        #     scaled_fit0 = scaler0.fit(X_fold0.drop([
-        #         'wt','wt_xs', 'process', 'multi_class','event',
-        #         'gen_match_1', 'gen_match_2','wt_em_qcd',
-        #         ], axis=1).as_matrix())
-        # with open('{}_fold0_{}_scaler.pkl'.format(opt.channel,opt.mjj_training), 'w') as f:
-        #     pickle.dump(scaled_fit0, f)
-        # #fold 1 scaler
-        # scaler1 = StandardScaler()
-        # if opt.channel != "em":
-        #     scaled_fit1 = scaler1.fit(X_fold1.drop([
-        #         'wt','wt_xs', 'process', 'multi_class','event',
-        #         'gen_match_1', 'gen_match_2',
-        #         ], axis=1).as_matrix())
-        # else:
-        #     scaled_fit1 = scaler1.fit(X_fold1.drop([
-        #         'wt','wt_xs', 'process', 'multi_class','event',
-        #         'gen_match_1', 'gen_match_2','wt_em_qcd',
-        #         ], axis=1).as_matrix())
-        # with open('{}_fold1_{}_scaler.pkl'.format(opt.channel,opt.mjj_training), 'w') as f:
-        #     pickle.dump(scaled_fit1, f)
-
-        if opt.apply_selection:
+        if opt.apply_selection and opt.era == "2016" and not opt.inc:
             X_fold1.to_hdf('data_Aug14Danny/dataset_fold1_{}_{}_{}_{}.hdf5' # odd event numbers
                 .format(opt.analysis, opt.channel, opt.sig_sample, opt.mjj_training),
                 key='X_fold1',
                 mode='w')
             X_fold0.to_hdf('data_Aug14Danny/dataset_fold0_{}_{}_{}_{}.hdf5' # even event numbers
                 .format(opt.analysis, opt.channel, opt.sig_sample, opt.mjj_training),
+                key='X_fold0',
+                mode='w')
+        elif opt.apply_selection and opt.era == "2016" and opt.inc:
+            X_fold1.to_hdf('data_Feb12/dataset_fold1_{}_{}_{}.hdf5' # odd event numbers
+                .format(opt.analysis, opt.channel, opt.era),
+                key='X_fold1',
+                mode='w')
+            X_fold0.to_hdf('data_Feb12/dataset_fold0_{}_{}_{}.hdf5' # even event numbers
+                .format(opt.analysis, opt.channel, opt.era),
+                key='X_fold0',
+                mode='w')
+        elif opt.era == "2017":
+            X_fold1.to_hdf('data_2017/dataset_fold1_{}_{}_{}.hdf5' # odd event numbers
+                .format(opt.analysis, opt.channel, opt.era),
+                key='X_fold1',
+                mode='w')
+            X_fold0.to_hdf('data_2017/dataset_fold0_{}_{}_{}.hdf5' # even event numbers
+                .format(opt.analysis, opt.channel, opt.era),
                 key='X_fold0',
                 mode='w')
 
