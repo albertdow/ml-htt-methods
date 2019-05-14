@@ -16,7 +16,6 @@ import matplotlib.pyplot as plt
 import pickle
 import argparse
 from scipy import interp
-from root_numpy import array2root
 import json
 from pandas.core.groupby import GroupBy
 # import seaborn as sns
@@ -81,22 +80,15 @@ def main(opt):
     ## To create dataset for chosen channel & sig_sample (i.e. boosted or dijet cat)
 
     print '\nCreate dataset for {} channel with {} sig samples for {} mjj training\n'.format(opt.channel, opt.sig_sample, opt.mjj_training)
-    if opt.sig_sample != "madgraph" and opt.era == "2016":
-        sig_files = lf.load_files('./filelist/sig_{}_files.dat'.format(opt.sig_sample))
-    elif opt.era == "2017":
-        sig_files = lf.load_files('./filelist/sig_{}_files_2017.dat'.format(opt.sig_sample))
+    if opt.sig_sample != "madgraph":
+        sig_files = lf.load_files('./filelist/sig_{}_files_{}.dat'.format(opt.sig_sample, opt.era))
     else:
         sig_files = lf.load_files('./filelist/sig_{}_{}_files.dat'.format(opt.sig_sample, opt.mjj_training))
-    if opt.era == "2016":
-        bkg_files = lf.load_files('./filelist/bkgs_files.dat')
-        data_files = lf.load_files('./filelist/{}_data_files.dat'.format(opt.channel))
-        if opt.embedding:
-            embed_files = lf.load_files("./filelist/embed_{}_files.dat".format(opt.channel))
-    elif opt.era == "2017":
-        bkg_files = lf.load_files('./filelist/bkgs_files_2017.dat')
-        data_files = lf.load_files('./filelist/{}_data_files_2017.dat'.format(opt.channel))
-        if opt.embedding:
-            embed_files = lf.load_files("./filelist/embed_{}_files_2017.dat".format(opt.channel))
+
+    bkg_files = lf.load_files('./filelist/slimmed_bkgs_files_{}.dat'.format(opt.era))
+    data_files = lf.load_files('./filelist/{}_data_files_{}.dat'.format(opt.channel, opt.era))
+    if opt.embedding:
+        embed_files = lf.load_files("./filelist/embed_{}_files_{}.dat".format(opt.channel, opt.era))
 
     # this file contains information about the xsections, lumi and event numbers
     if opt.era == "2016":
@@ -172,7 +164,7 @@ def main(opt):
                 'pt_1', 'pt_2', 'eta_1', 'eta_2',
                 'mt_1', 'mt_2', 'mt_lep',
                 'm_vis', 'm_sv',#'pt_tt',# 'eta_tt',
-                'eta_h','pt_h',
+                'eta_h','pt_tt',
                 'met',# 'met_dphi_1', 'met_dphi_2',
                 'n_jets', 'n_bjets',
                 'pt_vis',
@@ -210,16 +202,13 @@ def main(opt):
                 ])
 
         if opt.analysis == 'sm':
-            if opt.channel == 'tt':
+            if opt.channel == 'tt': # latest SM vars
                 features = [
-                        'm_sv','pt_1','pt_2','eta_1',
-                        'phi_1','phi_2','jpt_1','jeta_1',
-                        'jphi_1','jphi_2','jcsv_1','jcsv_2',
-                        'jm_1','jmva_1','bpt_1','met',
-                        'd0_1','beta_1','beta_2','bphi_1',
-                        'bphi_2','bcsv_1','bcsv_2','n_jets',
-                        'n_bjets','mt_1','pt_vis','pt_tt',
-                        'mjj','jdeta','m_vis','dijetphi',
+                        'm_sv','pt_1','pt_2',
+                        'jpt_1','jeta_1',
+                        'bpt_1','bpt_2','met',
+                        'n_jets','n_bjets','mt_1','pt_vis','pt_tt',
+                        'mjj','jdeta','m_vis',
                         'dijetpt',
                         ]
             if opt.channel == 'mt':
@@ -421,7 +410,7 @@ def main(opt):
                     'WZTo1L1Nu2Q','WZTo1L3Nu',
                     'VVTo2L2Nu-ext1','VVTo2L2Nu',
                     'WZTo2L2Q','ZZTo2L2Q','ZZTo4L-amcat',
-                    'GluGluHToWWTo2L2Nu_M-125','ZHToTauTau_M-125',
+                    'ZHToTauTau_M-125',
                     'T-tW','T-t','Tbar-tW','Tbar-t',
                     # w
                     'W1JetsToLNu-LO','W2JetsToLNu-LO-ext','W2JetsToLNu-LO',
@@ -432,8 +421,6 @@ def main(opt):
                     'WplusHToTauTau_M-125',
                     # tt
                     'TT',
-                    # vbf bkg
-                    'VBFHToWWTo2L2Nu_M-125',
                     ]
                 }
 
@@ -580,7 +567,9 @@ def main(opt):
         # path = '/vols/cms/akd116/Offline/output/SM/2018/May17_2'
         # path = '/vols/cms/akd116/Offline/output/SM/2018/Jun22_2016_Danny'
         # path = '/vols/cms/akd116/Offline/output/SM/2018/Aug14_2016_Danny_v3'
-        path = '/vols/cms/akd116/Offline/output/SM/2018/Feb12_2016/'
+        # path = '/vols/cms/akd116/Offline/output/SM/2018/Feb12_2016'
+        # path = '/vols/cms/dw515/Offline/output/SM/Dec05_2016/'
+        path = '/vols/cms/akd116/Offline/output/SM/2019/Feb26_2016/'
     elif opt.era == "2017":
         path = '/vols/cms/dw515/Offline/output/SM/Nov27_2017/'
 
@@ -624,12 +613,12 @@ def main(opt):
                         ]:
                     sig_tmp['wt_xs'] = sig_tmp['wt'] * (0.5 * lumi)/((4723705.+4723705.+4788426.))
 
-                #if sig == "GluGluToHToTauTauPlusTwoJets_M125_amcatnloFXFX":
-                #    sig_tmp['wt_xs'] = sig_tmp['wt'] * (0.5 * lumi)/4808923. # when taking abs of neg wts this may not be the right evt number (factor 3 smaller)
-                #elif sig == "GluGluToPseudoscalarHToTauTauPlusTwoJets_M125_amcatnloFXFX":
-                #    sig_tmp['wt_xs'] = sig_tmp['wt'] * (0.5 * lumi)/4723705.
-                #elif sig == "GluGluToMaxmixHToTauTauPlusTwoJets_M125_amcatnloFXFX":
-                #    sig_tmp['wt_xs'] = sig_tmp['wt'] * (0.5 * lumi)/4788426.
+                # if sig == "GluGluToHToTauTauPlusTwoJets_M125_amcatnloFXFX":
+                #     sig_tmp['wt_xs'] = sig_tmp['wt'] * (0.5 * lumi)/4808923. # when taking abs of neg wts this may not be the right evt number (factor 3 smaller)
+                # elif sig == "GluGluToPseudoscalarHToTauTauPlusTwoJets_M125_amcatnloFXFX":
+                #     sig_tmp['wt_xs'] = sig_tmp['wt'] * (0.5 * lumi)/4723705.
+                # elif sig == "GluGluToMaxmixHToTauTauPlusTwoJets_M125_amcatnloFXFX":
+                #     sig_tmp['wt_xs'] = sig_tmp['wt'] * (0.5 * lumi)/4788426.
             else:
                 sig_tmp['wt_xs'] = sig_tmp['wt'] * (xs_tmp * lumi)/(events_tmp_1 + events_tmp_2 + events_tmp_3)
             # sig_tmp['wt_xs'] = scaler.fit_transform(sig_tmp['wt_xs'].values.reshape(-1,1))
@@ -783,7 +772,7 @@ def main(opt):
 
                     zl_tmp = bkg_tmp[(bkg_tmp['gen_match_2'] != 6) & (bkg_tmp['gen_match_2'] != 5)]
                     zl_tmp.reset_index(drop=True)
-                    if opt.mjj_training == 'low' or opt.channel == "et":
+                    if opt.mjj_training == 'low':
                         zl_tmp['multi_class'] = 'zll' ## zl --> zll
                     else:
                         zl_tmp['multi_class'] = 'misc' ## zl --> misc
@@ -1077,20 +1066,20 @@ def main(opt):
         X_fold1 = X[(X['event'] % 2 == 1)]#.drop(['event'], axis=1)
 
         if opt.apply_selection and opt.era == "2016" and not opt.inc:
-            X_fold1.to_hdf('data_Aug14Danny/dataset_fold1_{}_{}_{}_{}.hdf5' # odd event numbers
+            X_fold1.to_hdf('data_Dec05/dataset_fold1_{}_{}_{}_{}.hdf5' # odd event numbers
                 .format(opt.analysis, opt.channel, opt.sig_sample, opt.mjj_training),
                 key='X_fold1',
                 mode='w')
-            X_fold0.to_hdf('data_Aug14Danny/dataset_fold0_{}_{}_{}_{}.hdf5' # even event numbers
+            X_fold0.to_hdf('data_Dec05/dataset_fold0_{}_{}_{}_{}.hdf5' # even event numbers
                 .format(opt.analysis, opt.channel, opt.sig_sample, opt.mjj_training),
                 key='X_fold0',
                 mode='w')
         elif opt.apply_selection and opt.era == "2016" and opt.inc:
-            X_fold1.to_hdf('data_Feb12/dataset_fold1_{}_{}_{}.hdf5' # odd event numbers
+            X_fold1.to_hdf('data_Feb26/dataset_fold1_{}_{}_{}.hdf5' # odd event numbers
                 .format(opt.analysis, opt.channel, opt.era),
                 key='X_fold1',
                 mode='w')
-            X_fold0.to_hdf('data_Feb12/dataset_fold0_{}_{}_{}.hdf5' # even event numbers
+            X_fold0.to_hdf('data_Feb26/dataset_fold0_{}_{}_{}.hdf5' # even event numbers
                 .format(opt.analysis, opt.channel, opt.era),
                 key='X_fold0',
                 mode='w')

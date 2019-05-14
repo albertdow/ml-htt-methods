@@ -33,7 +33,6 @@ from sklearn.preprocessing import StandardScaler
 
 # custom modules
 import plot_functions as pf
-import load_functions as lf
 import fit_functions as ff
 
 
@@ -104,9 +103,14 @@ def main(opt):
 
     if opt.mode == 'keras_multi':
 
-        train_fold = pd.read_hdf('data_Aug14Danny/dataset_fold{}_{}_{}_{}_{}.hdf5'
-                .format(opt.fold, opt.analysis, opt.channel, opt.sig_sample,opt.mjj_training))
-        ff.fit_keras(train_fold, opt.channel, opt.fold, opt.analysis, opt.sig_sample, opt.mjj_training)
+        if not opt.inc:
+            train_fold = pd.read_hdf('data_Aug14Danny/dataset_fold{}_{}_{}_{}_{}.hdf5'
+                    .format(opt.fold, opt.analysis, opt.channel, opt.sig_sample,opt.mjj_training))
+            ff.fit_keras(train_fold, opt.channel, opt.fold, opt.analysis, opt.sig_sample, opt.mjj_training)
+        elif opt.inc:
+            train_fold = pd.read_hdf('data_Feb26/dataset_fold{}_{}_{}_{}.hdf5'
+                    .format(opt.fold, opt.analysis, opt.channel, opt.era))
+            ff.fit_keras_inc(train_fold, opt.channel, opt.fold, opt.analysis, opt.sig_sample)
 
     if opt.mode == 'tf':
 
@@ -130,16 +134,16 @@ def main(opt):
                 train_fold = pd.read_hdf('data_2017/dataset_fold{}_{}_{}_{}.hdf5'
                         .format(opt.fold, opt.analysis, opt.channel, opt.era))
             if opt.era == "2016":
-                train_fold = pd.read_hdf('data_Aug14Danny/dataset_fold{}_{}_{}_{}.hdf5'
+                train_fold = pd.read_hdf('data_Dec05/dataset_fold{}_{}_{}_{}.hdf5'
                         .format(opt.fold, opt.analysis, opt.channel, opt.era))
-            print 'train_fold used: dataset_fold{}_{}_{}_{}.hdf5'.format(opt.fold, opt.analysis, opt.channel, opt.era)
-            print train_fold.shape
+            print('train_fold used: dataset_fold{}_{}_{}_{}.hdf5'.format(opt.fold, opt.analysis, opt.channel, opt.era))
+            print(train_fold.shape)
             ff.fit_multiclass_kfold_inc(train_fold, opt.fold, opt.analysis, opt.channel, opt.sig_sample, opt.era)
         else:
-            train_fold = pd.read_hdf('data_Aug14Danny/dataset_fold{}_{}_{}_{}_{}.hdf5'
+            train_fold = pd.read_hdf('data_Dec05/dataset_fold{}_{}_{}_{}_{}.hdf5'
                     .format(opt.fold, opt.analysis, opt.channel, opt.sig_sample, opt.mjj_training))
-            print 'train_fold used:  data_Aug14Danny/dataset_fold{}_{}_{}_{}_{}.hdf5'.format(opt.fold, opt.analysis, opt.channel, opt.sig_sample, opt.mjj_training)
-            print train_fold.shape
+            print('train_fold used:  data_Dec05/dataset_fold{}_{}_{}_{}_{}.hdf5'.format(opt.fold, opt.analysis, opt.channel, opt.sig_sample, opt.mjj_training))
+            print(train_fold.shape)
 
             if not opt.cv:
                 ff.fit_multiclass_kfold(train_fold, opt.fold, opt.analysis, opt.channel, opt.sig_sample, opt.mjj_training)
