@@ -68,7 +68,7 @@ def main(args, config, file_names):
 
     # Sanity checks
     for sample in file_names:
-        print sample
+        print(sample)
         # if not os.path.exists("{}/{}_{}_{}.root".format(path, sample, args.channel, args.era)):
         if not os.path.exists("{}/{}".format(path, sample)):
             logger.fatal("Input file %s does not exist.", sample)
@@ -79,9 +79,13 @@ def main(args, config, file_names):
             logger.debug("%s : %s", i, class_)
 
         # Load model
-        with open('{}/multiLargeSample_xgb_clf.pkl'
+        with open('{}/multiLargeSample_xgb_clf_NewRhoMass.pkl'
                 .format(args.model_folder), 'r') as f:
             classifier = pickle.load(f)
+        with open('{}/X_test.pkl'.format(args.model_folder), 'r') as f:
+            X_test = pickle.load(f)
+
+        print(X_test.columns)
 
         # Open input file
         file_ = ROOT.TFile("{}/{}".format(path, sample), "UPDATE")
@@ -165,6 +169,7 @@ def main(args, config, file_names):
             response_a1_score[0] = -9999.0
             response_a1_score[0] = response[3]
 
+            # just testing things for now
             exit()
 
             # Fill branches
