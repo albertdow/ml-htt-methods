@@ -1,0 +1,28 @@
+# Define classes based on tree names in dataset file
+classes:
+    - other
+    - rho
+    - pion
+    - a1
+
+# Define list of variables to be used for training
+# in the right order
+variables:
+    - bpt_1
+    - bpt_2
+    - dijetpt
+    - jdeta
+    - jeta_1
+    - jpt_1
+    - m_sv
+    - m_vis
+    - met
+    - mjj
+    - mt_1
+    - n_bjets
+    - n_jets
+    - pt_1
+    - pt_2
+    - pt_tt
+    - pt_vis
+
