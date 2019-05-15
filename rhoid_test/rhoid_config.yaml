@@ -2,27 +2,37 @@
 classes:
     - other
     - rho
-    - pion
+    - pi
     - a1
 
 # Define list of variables to be used for training
 # in the right order
 variables:
-    - bpt_1
-    - bpt_2
-    - dijetpt
-    - jdeta
-    - jeta_1
-    - jpt_1
-    - m_sv
-    - m_vis
-    - met
-    - mjj
-    - mt_1
-    - n_bjets
-    - n_jets
-    - pt_1
-    - pt_2
-    - pt_tt
-    - pt_vis
+    - Egamma1_tau
+    - Egamma2_tau
+    - Egamma3_tau
+    - Epi_tau
+    - rho_dEta_tau
+    - rho_dphi_tau
+    - gammas_dEta_tau
+    - gammas_dR_tau
+    - DeltaR2WRTtau_tau
+    - eta
+    - pt
+    - Epi0
+    - Epi
+    - rho_dEta
+    - rho_dphi
+    - gammas_dEta
+    - tau_decay_mode
+    - Mrho
+    - Mpi0
+    - DeltaR2WRTtau
+    - Mpi0_TwoHighGammas
+    - Mpi0_ThreeHighGammas
+    - Mpi0_FourHighGammas
+    - Mrho_OneHighGammas
+    - Mrho_TwoHighGammas
+    - Mrho_ThreeHighGammas
+    - Mrho_subleadingGamma
 

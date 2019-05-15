@@ -39,7 +39,7 @@ def parse_arguments():
         "Keras models to be used for the annotation. Note that these have to be booked in the reversed order [fold1*, fold0*], so that the training is independent from the application."
     )
     parser.add_argument(
-        "--tree", default="ntuple", help="Name of trees in the directories.")
+        "--tree", default="train_ntuple", help="Name of trees in the directories.")
     parser.add_argument(
         "--channel", default="mt", help="Name of channel to annotate.")
     parser.add_argument(
@@ -106,7 +106,7 @@ def main(args, config, file_names):
             if variable in ["n_jets","n_bjets","opp_sides",]:
                 values.append(array("I", [0]))
             if variable not in ["dR_custom",]:
-                tree.SetBranchAddress(variable, values[-1])
+                tree.SetBranchAddress(variable[:-2], values[-1])
 
         # Prepare branches with the predictions of the classifier
         response_other_score = array("f", [-9999])
@@ -140,11 +140,15 @@ def main(args, config, file_names):
             #        /(2.*float(getattr(tree,"pt_1"))*float(getattr(tree,"pt_2"))))
             # dR_custom = np.sqrt((float(getattr(tree,"eta_1")) \
             #         -float(getattr(tree,"eta_2")))**2 + dphi_custom**2)
+            
+            #Egamma1_tau = float(getattr(tree,""))
 
             # then define in additional_vars
             additional_vars = [
+                    #Egamma1_tau,
                     # dR_custom,
                     ]
+            
             if len(values) < len(config["variables"]):
                 values.extend(additional_vars)
             else:
