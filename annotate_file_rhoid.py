@@ -39,7 +39,9 @@ def parse_arguments():
         "Keras models to be used for the annotation. Note that these have to be booked in the reversed order [fold1*, fold0*], so that the training is independent from the application."
     )
     parser.add_argument(
-        "--tree", default="train_ntuple", help="Name of trees in the directories.")
+        "--tree", default="ntuple", help="Name of trees in the directories.")
+    parser.add_argument(
+        "--alt_tree", default="train_ntuple", help="Name of trees in the directories.")
     parser.add_argument(
         "--channel", default="mt", help="Name of channel to annotate.")
     parser.add_argument(
@@ -61,12 +63,30 @@ def load_files(filelist):
 
     return file_names
 
+def setupVarsForRhoID(numTaus):
+    pass
+
+def useBranchNames(channel):
+    if channel in ["mt","et"]:
+        return ["other_2","rho_2","pi_2","a1_2"]
+    elif channel == "tt":
+        return ["other_1","rho_1","pi_1","a1_1","other_2","rho_2","pi_2","a1_2"]
+    else: return None
 
 def main(args, config, file_names):
 
-    path = "/vols/cms/mhh18/Offline/output/SM/2016_trees/"
+    # path = "/vols/cms/mhh18/Offline/output/SM/2016_trees/"
+    path = "/vols/cms/akd116/Offline/output/SM/2019/test_trees/"
 
-    # Sanity checks
+    # Load model
+    with open('{}/multiLargeSample_xgb_clf_NewRhoMass.pkl'
+            .format(args.model_folder), 'r') as f:
+        classifier = pickle.load(f)
+    with open('{}/X_test.pkl'.format(args.model_folder), 'r') as f:
+        X_test = pickle.load(f)
+
+    print(X_test.columns)
+
     for sample in file_names:
         print(sample)
         # if not os.path.exists("{}/{}_{}_{}.root".format(path, sample, args.channel, args.era)):
@@ -78,14 +98,6 @@ def main(args, config, file_names):
         for i, class_ in enumerate(config["classes"]):
             logger.debug("%s : %s", i, class_)
 
-        # Load model
-        with open('{}/multiLargeSample_xgb_clf_NewRhoMass.pkl'
-                .format(args.model_folder), 'r') as f:
-            classifier = pickle.load(f)
-        with open('{}/X_test.pkl'.format(args.model_folder), 'r') as f:
-            X_test = pickle.load(f)
-
-        print(X_test.columns)
 
         # Open input file
         file_ = ROOT.TFile("{}/{}".format(path, sample), "UPDATE")
@@ -94,59 +106,113 @@ def main(args, config, file_names):
             raise Exception
 
         tree = file_.Get(args.tree)
+        alt_tree = file_.Get(args.alt_tree)
 
         # Book branches for annotation
         values = []
-        for variable in config["variables"]:
-            if variable in ["dijetpt","eta_h","IC_binary_test_4_score","IC_binary_test_4_index",]:
-                values.append(array("f", [-9999]))
-            if variable in ["eta_1","eta_2","jdeta","jpt_1","jpt_2","m_sv","m_vis","met","jeta_1","jeta_2","mt_tot","mt_sv",
-                    "met_dphi_1","met_dphi_2","mjj","mt_1","mt_2","mt_lep","pt_1","pt_2","pt_h","pt_tt","pt_vis","pzeta","dR",]:
-                values.append(array("d", [-9999]))
-            if variable in ["n_jets","n_bjets","opp_sides",]:
-                values.append(array("I", [0]))
-            if variable not in ["dR_custom",]:
-                tree.SetBranchAddress(variable[:-2], values[-1])
+
+        # don't actually need this bit since all features are custom
+        # for variable in config["variables"]:
+        #     if variable not in ["dR_custom",]:
+        #         tree.SetBranchAddress(variable[:-2], values[-1])
 
         # Prepare branches with the predictions of the classifier
-        response_other_score = array("f", [-9999])
-        branch_other_score = tree.Branch("{}_other_score".format(
-            args.tag), response_other_score, "{}_other_score/F".format(
+        response_other = array("f", [-9999])
+        branch_other = tree.Branch("{}_other".format(
+            args.tag), response_other, "{}_other/F".format(
                 args.tag))
 
-        response_rho_score = array("f", [-9999])
-        branch_rho_score = tree.Branch("{}_rho_score".format(
-            args.tag), response_rho_score, "{}_rho_score/F".format(
+        response_rho = array("f", [-9999])
+        branch_rho = tree.Branch("{}_rho".format(
+            args.tag), response_rho, "{}_rho/F".format(
                 args.tag))
 
-        response_pion_score = array("f", [-9999])
-        branch_pion_score = tree.Branch("{}_pion_score".format(
-            args.tag), response_pion_score, "{}_pion_score/F".format(
+        response_pi = array("f", [-9999])
+        branch_pi = tree.Branch("{}_pi".format(
+            args.tag), response_pi, "{}_pi/F".format(
                 args.tag))
 
-        response_a1_score = array("f", [-9999])
-        branch_a1_score = tree.Branch("{}_a1_score".format(
-            args.tag), response_a1_score, "{}_a1_score/F".format(
+        response_a1 = array("f", [-9999])
+        branch_a1 = tree.Branch("{}_a1".format(
+            args.tag), response_a1, "{}_a1/F".format(
                 args.tag))
 
         # Run the event loop
-        for i_event in range(tree.GetEntries()):
-            tree.GetEntry(i_event)
+        for i_event in range(alt_tree.GetEntries()):
+            alt_tree.GetEntry(i_event)
 
-            # add here any variables that are to be calculated on the fly
-            # eg. dR between two leading leptons --> need dphi_custom then
-            # make dR_custom
-            # dphi_custom = np.arccos(1-float(getattr(tree,"mt_lep"))**2 \
-            #        /(2.*float(getattr(tree,"pt_1"))*float(getattr(tree,"pt_2"))))
-            # dR_custom = np.sqrt((float(getattr(tree,"eta_1")) \
-            #         -float(getattr(tree,"eta_2")))**2 + dphi_custom**2)
-            
-            #Egamma1_tau = float(getattr(tree,""))
+
+            if args.channel in ["mt","et"]:
+                # only one tau to apply rho ID to (second ie. _2)
+                Egamma1_tau = float(getattr(alt_tree,"Egamma1_2")) \
+                        / float(getattr(alt_tree,"E_2"))
+                Egamma2_tau = float(getattr(alt_tree,"Egamma2_2")) \
+                        / float(getattr(alt_tree,"E_2"))
+                Egamma3_tau = float(getattr(alt_tree,"Egamma3_2")) \
+                        / float(getattr(alt_tree,"E_2"))
+                Epi_tau = float(getattr(alt_tree,"Epi_2")) \
+                        / float(getattr(alt_tree,"E_2"))
+                rho_dEta_tau = float(getattr(alt_tree,"rho_dEta_2")) \
+                        * float(getattr(alt_tree,"E_2"))
+                rho_dphi_tau = float(getattr(alt_tree,"rho_dphi_2")) \
+                        * float(getattr(alt_tree,"E_2"))
+                gammas_dEta_tau = float(getattr(alt_tree,"gammas_dEta_2")) \
+                        * float(getattr(alt_tree,"E_2"))
+                gammas_dR_tau = np.sqrt(float(getattr(alt_tree,"gammas_dEta_2"))**2 \
+                        + float(getattr(alt_tree,"gammas_dphi_2"))**2)
+                DeltaR2WRTtau_tau = float(getattr(alt_tree,"DeltaR2WRTtau_2")) \
+                        * float(getattr(alt_tree,"E_2"))**2
+                eta = float(getattr(alt_tree,"eta_2"))
+                pt = float(getattr(alt_tree,"pt_2"))
+                Epi0 = float(getattr(alt_tree,"Epi0_2"))
+                Epi = float(getattr(alt_tree,"Epi_2"))
+                # are the next three features actually needed? 
+                # we already have them above basically
+                rho_dEta = float(getattr(alt_tree,"rho_dEta_2"))
+                rho_dphi = float(getattr(alt_tree,"rho_dphi_2"))
+                gammas_dEta = float(getattr(alt_tree,"gammas_dEta_2"))
+                #
+                tau_decay_mode = float(getattr(alt_tree,"tau_decay_mode_2"))
+                Mrho = float(getattr(alt_tree,"Mrho_2"))
+                Mpi0 = float(getattr(alt_tree,"Mpi0_2"))
+                DeltaR2WRTtau = float(getattr(alt_tree,"DeltaR2WRTtau_2"))
+                Mpi0_TwoHighGammas = float(getattr(alt_tree,"Mpi0_TwoHighGammas_2"))
+                Mpi0_ThreeHighGammas = float(getattr(alt_tree,"Mpi0_ThreeHighGammas_2"))
+                Mpi0_FourHighGammas = float(getattr(alt_tree,"Mpi0_FourHighGammas_2"))
+                Mrho_OneHighGammas = float(getattr(alt_tree,"Mrho_OneHighGammas_2"))
+                Mrho_TwoHighGammas = float(getattr(alt_tree,"Mrho_TwoHighGammas_2"))
+                Mrho_ThreeHighGammas = float(getattr(alt_tree,"Mrho_ThreeHighGammas_2"))
+                Mrho_subleadingGamma = float(getattr(alt_tree,"Mrho_subleadingGamma_2"))
 
             # then define in additional_vars
             additional_vars = [
-                    #Egamma1_tau,
-                    # dR_custom,
+                    Egamma1_tau,
+                    Egamma2_tau,
+                    Egamma3_tau,
+                    Epi_tau,
+                    rho_dEta_tau,
+                    rho_dphi_tau,
+                    gammas_dEta_tau,
+                    gammas_dR_tau,
+                    DeltaR2WRTtau_tau,
+                    eta,
+                    pt,
+                    Epi0,
+                    Epi,
+                    rho_dEta,
+                    rho_dphi,
+                    gammas_dEta,
+                    tau_decay_mode,
+                    Mrho,
+                    Mpi0,
+                    DeltaR2WRTtau,
+                    Mpi0_TwoHighGammas,
+                    Mpi0_ThreeHighGammas,
+                    Mpi0_FourHighGammas,
+                    Mrho_OneHighGammas,
+                    Mrho_TwoHighGammas,
+                    Mrho_ThreeHighGammas,
+                    Mrho_subleadingGamma,
                     ]
             
             if len(values) < len(config["variables"]):
@@ -164,14 +230,14 @@ def main(args, config, file_names):
             response_other_score[0] = -9999.0
             response_other_score[0] = response[0]
 
-            response_rho_score[0] = -9999.0
-            response_rho_score[0] = response[1]
+            response_rho_score[0]   = -9999.0
+            response_rho_score[0]   = response[1]
 
-            response_pion_score[0] = -9999.0
-            response_pion_score[0] = response[2]
+            response_pi_score[0]    = -9999.0
+            response_pi_score[0]    = response[2]
 
-            response_a1_score[0] = -9999.0
-            response_a1_score[0] = response[3]
+            response_a1_score[0]    = -9999.0
+            response_a1_score[0]    = response[3]
 
             # just testing things for now
             exit()
@@ -179,7 +245,7 @@ def main(args, config, file_names):
             # Fill branches
             branch_other_score.Fill()
             branch_rho_score.Fill()
-            branch_pion_score.Fill()
+            branch_pi_score.Fill()
             branch_a1_score.Fill()
 
 
