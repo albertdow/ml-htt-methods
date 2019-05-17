@@ -2873,7 +2873,7 @@ def fit_keras_inc(X, channel, fold, analysis, sig_sample):
     ## START EDITING THIS FOR ODD/EVEN SPLIT
     print('Training keras model fold{}'.format(fold))
 
-    X.multi_class.replace("qqh","ggh",inplace=True)
+    # X.multi_class.replace("qqh","ggh",inplace=True)
     X = X[X["multi_class"] != "misc"]
 
     # X["zfeld"] = np.fabs(X.eta_h - (X.jeta_1 + X.jeta_2)/2.)
@@ -2917,11 +2917,11 @@ def fit_keras_inc(X, channel, fold, analysis, sig_sample):
     encoder.fit(y_train)
     encoded_y_train = encoder.transform(y_train)
     # convert integers to dummy variables (i.e. one hot encoded)
-    y_train = np_utils.to_categorical(encoded_y_train, num_classes=3)
+    y_train = np_utils.to_categorical(encoded_y_train, num_classes=len(class_weight_dict.keys()))
     encoder.fit(y_test)
     encoded_y_test = encoder.transform(y_test)
     # convert integers to dummy variables (i.e. one hot encoded)
-    y_test = np_utils.to_categorical(encoded_y_test, num_classes=3)
+    y_test = np_utils.to_categorical(encoded_y_test, num_classes=len(class_weight_dict.keys()))
     
     print('original Y: ', X_train['multi_class'].head())
     print('one-hot y: ', y_train[0])
@@ -2987,7 +2987,7 @@ def fit_keras_inc(X, channel, fold, analysis, sig_sample):
             model.add(Dense(nodes, kernel_regularizer=l2(1e-5), input_dim=num_inputs))
         else:
             model.add(Dense(nodes, kernel_regularizer=l2(1e-5)))
-        model.add(Activation("tanh"))
+        model.add(Activation("relu"))
         # model.add(Dropout(0.3))
 
     model.add(Dense(num_outputs, kernel_regularizer=l2(1e-5)))
@@ -2995,7 +2995,7 @@ def fit_keras_inc(X, channel, fold, analysis, sig_sample):
 
     model.compile(
         loss="categorical_crossentropy", 
-        optimizer=Adam(lr=1e-4), 
+        optimizer=Nadam(lr=1e-4), 
         metrics=["categorical_accuracy"]
         )
 
