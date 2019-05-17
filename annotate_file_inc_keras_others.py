@@ -121,6 +121,15 @@ def main(args, config, file_names):
             #         .format(args.model_folder, args.channel), 'r') as f:
             #     clf_fold0 = load_model(f)
 
+            # hack to remove optimizer weights ... 
+            # import h5py
+            # f = h5py.File('{}/{}_fold0_keras_model.h5'
+            #         .format(args.model_folder, args.channel), 'r+')
+            # print(f)
+            # print(f['optimizer_weights'])
+            # del f['optimizer_weights']
+            # f.close()
+
             # vienna/KIT settings
             clf_fold1 = load_model('{}/{}_fold1_keras_model.h5'
                     .format(args.model_folder, args.channel))
@@ -177,18 +186,11 @@ def main(args, config, file_names):
             logger.fatal("File %s is not existent.", sample)
             raise Exception
 
-        # Loop through directories in this file and annotate tree if directory
-        # starts with the set prefix.
-        # for key in file_.GetListOfKeys():
-            # Find valid directories
-            # name = key.GetName()
-            # if name.startswith(args.dir_prefix):
-            #     logger.debug("Process directory %s.", name)
         tree = file_.Get(args.tree)
-        # if tree == None:
-        #     logger.fatal("Failed to find tree %s in directory %s.",
-        #                  args.tree, name)
-        #     raise Exception
+        if tree == None:
+            logger.fatal("Failed to find tree %s in directory %s.",
+                         args.tree, name)
+            raise Exception
 
         # Book branches for annotation
         values = []
@@ -203,8 +205,6 @@ def main(args, config, file_names):
             if variable not in ["zfeld","centrality","mjj_jdeta","dijetpt_pth","dijetpt_jpt1","dijetpt_pth_over_pt1",
                     "msv_mvis","msvsq_mvis","msv_sq","log_metsq_jeta2","met_jeta2","oppsides_centrality","pthsq_ptvis","msv_rec","dR_custom","rms_pt","rms_jpt","rec_sqrt_msv"]:
                 tree.SetBranchAddress(variable, values[-1])
-            # else:
-            #     tree.SetBranchAddress("eta_h", values[-1])
 
         response_max_score = array("f", [-9999])
         branch_max_score = tree.Branch("{}_max_score".format(
@@ -233,7 +233,6 @@ def main(args, config, file_names):
             # Get event number and compute response
             event = int(getattr(tree, "event"))
             m_sv = float(getattr(tree, "m_sv"))
-            # m_vis = float(getattr(tree, "m_vis"))
 
             if m_sv > 0:
                 if float(getattr(tree, "jdeta")) == -10. or float(getattr(tree, "jdeta")) == -9999.:
@@ -257,42 +256,23 @@ def main(args, config, file_names):
                     jpt_2_mod = -10
                 elif getattr(tree, "n_jets") < 1:
                     jpt_1_mod = -10
+                print("yes")
 
-                # zfeld = float(getattr(tree,"eta_h")) - (float(getattr(tree,"jeta_1"))+float(getattr(tree,"jeta_2")))/2
-                # centrality = np.exp(-4*(zfeld/np.fabs(float(getattr(tree,"jdeta"))))**2)
-                # dphi_custom = np.arccos(1-float(getattr(tree,"mt_lep"))**2/(2.*float(getattr(tree,"pt_1"))*float(getattr(tree,"pt_2"))))
-                # dR_custom = np.sqrt((float(getattr(tree,"eta_1"))-float(getattr(tree,"eta_2")))**2 + dphi_custom**2)
-
-                # # additional_vars = [
-                # #         zfeld,centrality,mjj_jdeta,dijetpt_pth,dijetpt_jpt1,dijetpt_pth_over_pt1,
-                # #         msv_mvis,msvsq_mvis,msv_sq,log_metsq_jeta2,met_jeta2,oppsides_centrality,pthsq_ptvis,msv_rec
-                # #         ]
-                # additional_vars = [
-                #         centrality,#mjj_jdeta,
-                #         #msvsq_mvis,pthsq_ptvis,
-                #         dR_custom,
-                #         ]
-                # additional_vars = [
-                #         jpt_1_mod, jpt_2_mod, jdeta_mod, mjj_mod, dijetpt_mod, 
-                #         ]
-                # if len(values) < len(config["variables"]):
-                #     values.extend(additional_vars)
-                # else:
-                #     for index,val in enumerate(additional_vars):
-                #         ind = len(additional_vars)-index
-                #         values[-ind] = val
-
+                print(len(values))
                 values[2] = jpt_1_mod
                 values[3] = jpt_2_mod
                 values[10] = mjj_mod
                 values[11] = jdeta_mod
                 values[13] = dijetpt_mod
+                print("yesss")
                 values = [-10. if (x == -9999. or x == -999.) else x for x in values] # maybe need this?
+                print("yesss1")
                 values_stacked = np.hstack(values).reshape(1, len(values))
+                print("yesss2")
                 values_preprocessed = preprocessing[event % 2].transform(values_stacked)
+                print("yesss3")
                 response = classifier[event % 2].predict(values_preprocessed)
-                # response = classifier[event % 2].predict_proba(values_stacked,
-                #         ntree_limit=classifier[event % 2].best_iteration+1)
+                print("yesss4")
                 response = np.squeeze(response)
                 print(response)
 
@@ -302,13 +282,6 @@ def main(args, config, file_names):
                     if r > response_max_score[0]:
                         response_max_score[0] = r
                         response_max_index[0] = i
-
-                # rms = np.sqrt(1./3. * (response[1]**2+response[2]**2+response[3]**2))
-                # if response_max_index[0] == 0 and (response[1]>0.3 or response[2]>0.3 or response[3]>0.3):
-                #     response_max_score[0] += rms
-                # print response
-                # print response_max_score[0]
-                # exit()
 
                 # # Take ggH score as well
                 # response_ggh_score[0] = -9999.0
@@ -325,11 +298,13 @@ def main(args, config, file_names):
                 # #     response_qqh_score[0] = response[1]
 
 
+                print("yes1")
                 # Fill branches
                 branch_max_score.Fill()
                 branch_max_index.Fill()
                 # branch_ggh_score.Fill()
                 # branch_qqh_score.Fill()
+                print("yes2")
 
             else:
                 response_max_score[0] = -9999.0
