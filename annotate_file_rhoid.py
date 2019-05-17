@@ -141,7 +141,6 @@ def main(args, config, file_names):
         for i_event in range(alt_tree.GetEntries()):
             alt_tree.GetEntry(i_event)
 
-
             if args.channel in ["mt","et"]:
                 # only one tau to apply rho ID to (second ie. _2)
                 Egamma1_tau = float(getattr(alt_tree,"Egamma1_2")) \
@@ -214,13 +213,14 @@ def main(args, config, file_names):
                     Mrho_ThreeHighGammas,
                     Mrho_subleadingGamma,
                     ]
-            
-            if len(values) < len(config["variables"]):
-                values.extend(additional_vars)
-            else:
-                for index,val in enumerate(additional_vars):
-                    ind = len(additional_vars)-index
-                    values[-ind] = val
+
+            # additional_vars = ["f{}".format(x) for x in np.arange(len(additional_vars))]
+
+            # if len(values) < len(config["variables"]):
+            #     values.extend(additional_vars)
+            # else:
+            for index,val in enumerate(additional_vars):
+                values.append(val)
             values_stacked = np.hstack(values).reshape(1, len(values))
             response = classifier.predict_proba(values_stacked,
                     ntree_limit=classifier.best_iteration+1)
