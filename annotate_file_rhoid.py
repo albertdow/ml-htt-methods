@@ -79,13 +79,9 @@ def main(args, config, file_names):
     path = "/vols/cms/akd116/Offline/output/SM/2019/test_trees/"
 
     # Load model
-    with open('{}/multiLargeSample_xgb_clf_NewRhoMass.pkl'
+    with open('{}/multiLargeSample_xgb_clf_NewRhoMass_maxdepth5_lr0p05_fNames.pkl'
             .format(args.model_folder), 'r') as f:
         classifier = pickle.load(f)
-    with open('{}/X_test.pkl'.format(args.model_folder), 'r') as f:
-        X_test = pickle.load(f)
-
-    print(X_test.columns)
 
     for sample in file_names:
         print(sample)
@@ -214,11 +210,6 @@ def main(args, config, file_names):
                     Mrho_subleadingGamma,
                     ]
 
-            # additional_vars = ["f{}".format(x) for x in np.arange(len(additional_vars))]
-
-            # if len(values) < len(config["variables"]):
-            #     values.extend(additional_vars)
-            # else:
             for index,val in enumerate(additional_vars):
                 values.append(val)
             values_stacked = np.hstack(values).reshape(1, len(values))
@@ -227,26 +218,23 @@ def main(args, config, file_names):
             response = np.squeeze(response)
 
             # Take scores in order as well
-            response_other_score[0] = -9999.0
-            response_other_score[0] = response[0]
+            response_other[0] = -9999.0
+            response_other[0] = response[0]
 
-            response_rho_score[0]   = -9999.0
-            response_rho_score[0]   = response[1]
+            response_rho[0]   = -9999.0
+            response_rho[0]   = response[1]
 
-            response_pi_score[0]    = -9999.0
-            response_pi_score[0]    = response[2]
+            response_pi[0]    = -9999.0
+            response_pi[0]    = response[2]
 
-            response_a1_score[0]    = -9999.0
-            response_a1_score[0]    = response[3]
-
-            # just testing things for now
-            exit()
+            response_a1[0]    = -9999.0
+            response_a1[0]    = response[3]
 
             # Fill branches
-            branch_other_score.Fill()
-            branch_rho_score.Fill()
-            branch_pi_score.Fill()
-            branch_a1_score.Fill()
+            branch_other.Fill()
+            branch_rho.Fill()
+            branch_pi.Fill()
+            branch_a1.Fill()
 
 
         # Write everything to file
