@@ -38,7 +38,7 @@ def plot_signal_background(data1, data2, column,
     # ax.set_yscale('log')
 
     fig.savefig('{}_{}_{}_{}_vs_{}.pdf'.format(column, channel, sig_sample, data1.multi_class.iloc[0], data2.multi_class.iloc[0]))
-    print 'Signal/Background plot of {} saved'.format(column)
+    print('Signal/Background plot of {} saved'.format(column))
 
 
     return None
@@ -76,11 +76,11 @@ def plot_roc_cutbased(data1, data2, column,
                 })
 
     df = pd.merge(sig_df, bkg_df, on='bin_edges')
-    print df
+    print(df)
 
     for col in ['signal', 'background']:
         df[col] = df[col] / df[col].sum()
-    print df
+    print(df)
 
     df.sort_values(by='signal', ascending=False, inplace=True)
     df.reset_index(drop=True, inplace=True)
@@ -90,10 +90,10 @@ def plot_roc_cutbased(data1, data2, column,
     df['dist'] = np.abs(sig_bin_max - df['bin_edges'])
     df.sort_values(by='dist', ascending=True, inplace=True)
     df.reset_index(drop=True, inplace=True)
-    print df
+    print(df)
 
     df_cum = df.cumsum(axis=0)
-    print df_cum
+    print(df_cum)
 
     df_zero = pd.DataFrame({'bin_edges':np.nan,'signal':0.0, 'background':0.0}, index=[0])
     df_cum = pd.concat([df_zero, df_cum])
@@ -102,7 +102,7 @@ def plot_roc_cutbased(data1, data2, column,
     ax.plot(df_cum['background'], df_cum['signal'])
 
     fig.savefig('roc_{}_{}_{}.pdf'.format(column, channel, sig_sample))
-    print 'ROC curve of {} saved'.format(column)
+    print('ROC curve of {} saved'.format(column))
 
 
     return None
@@ -125,7 +125,7 @@ def plot_roc_curve(fpr, tpr, auc, figname):
     ax.set_ylim(lims)
 
     fig.savefig(figname)
-    print 'ROC curve saved as {}'.format(figname)
+    print('ROC curve saved as {}'.format(figname))
 
     return None
 
@@ -141,7 +141,7 @@ def plot_scatter_matrix(X, figname):
     plt.figure()
     sm = scatter_matrix(df, figsize=(20,20), alpha=0.4, s=60, c=['y','r'])
     plt.savefig(figname)
-    print 'Scatter matrix saved as {}'.format(figname)
+    print('Scatter matrix saved as {}'.format(figname))
 
     return None
 
@@ -153,14 +153,14 @@ def plot_confusion_matrix(y_test, y_pred, w_test, classes,
     cm = confusion_matrix(y_test, y_pred, sample_weight=w_test)
     if normalise_by_col:
         cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
-        print 'Normalised efficiency confusion matrix'
+        print('Normalised efficiency confusion matrix')
     if normalise_by_row:
         cm = cm.astype('float') / cm.sum(axis=0)[np.newaxis, :]
-        print 'Normalised purity confusion matrix'
+        print('Normalised purity confusion matrix')
     else:
-        print 'Non-normalised confusion matrix'
+        print('Non-normalised confusion matrix')
 
-    print cm
+    print(cm)
 
     plt.figure()
     plt.imshow(cm, interpolation='nearest', cmap=cmap)
@@ -171,7 +171,7 @@ def plot_confusion_matrix(y_test, y_pred, w_test, classes,
 
     fmt = '.3f'
     thresh = cm.max() / 2.
-    for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
+    for i, j in itertools.product(list(range(cm.shape[0])), list(range(cm.shape[1]))):
         plt.text(j, i, format(cm[i, j], fmt),
                  horizontalalignment='center',
                  color='w' if cm[i, j] > thresh else 'k')
@@ -181,7 +181,7 @@ def plot_confusion_matrix(y_test, y_pred, w_test, classes,
     plt.xlabel('Predicted label')
 
     plt.savefig(figname)
-    print 'Confusion matrix saved as {}'.format(figname)
+    print('Confusion matrix saved as {}'.format(figname))
 
     return None
 
@@ -199,7 +199,7 @@ def plot_features(booster, imp_type, figname):
                 title='', xlabel='F score', ylabel='Features', importance_type='gain')
 
     fig.savefig(figname)
-    print 'Feature importance saved as {}'.format(figname)
+    print('Feature importance saved as {}'.format(figname))
 
     return None
 
@@ -227,7 +227,7 @@ def plot_correlation_matrix(data, figname, **kwds):
 
     fig.tight_layout()
     fig.savefig(figname)
-    print 'Correlation matrix saved as {}'.format(figname)
+    print('Correlation matrix saved as {}'.format(figname))
 
 
 def plot_output(booster, train, test, y_train, y_test, figname, bins=20, **kwds):
@@ -272,7 +272,7 @@ def plot_output(booster, train, test, y_train, y_test, figname, bins=20, **kwds)
     ax.legend(loc='best')
 
     fig.savefig(figname)
-    print 'BDT score saved as {}'.format(figname)
+    print('BDT score saved as {}'.format(figname))
 
     return None
 
@@ -321,7 +321,7 @@ def compare_train_test(clf, X_train, y_train, X_test, y_test, figname, bins=30):
     ax.legend(loc='best')
 
     fig.savefig(figname)
-    print 'BDT score saved as {}'.format(figname)
+    print('BDT score saved as {}'.format(figname))
 
     return None
 
@@ -330,7 +330,7 @@ def plot_learning_curve(model, metric, figname):
     # retrieve performance metrics
     results = model.evals_result()
     epochs = len(results['validation_0'][metric])
-    x_axis = range(0, epochs)
+    x_axis = list(range(0, epochs))
 
     # plot log loss
     fig, ax = plt.subplots()
@@ -342,6 +342,6 @@ def plot_learning_curve(model, metric, figname):
 
 
     fig.savefig(figname)
-    print 'Learning curve plotted as {}'.format(figname)
+    print('Learning curve plotted as {}'.format(figname))
 
     return None

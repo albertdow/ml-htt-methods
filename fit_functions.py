@@ -48,6 +48,8 @@ from sklearn.feature_selection import mutual_info_classif
 from sklearn.feature_selection import SelectFromModel
 from sklearn.neural_network import MLPClassifier
 
+# from bayes_opt import BayesianOptimization
+
 def fit_ttsplit(X, channel, fold):
 
     X["zfeld"] = np.fabs(X.eta_h - (X.jeta_1 + X.jeta_2)/2.)
@@ -63,9 +65,9 @@ def fit_ttsplit(X, channel, fold):
             random_state=123456,
             stratify=X['class'].as_matrix(),
             )
-    print X.shape
-    print X_train[(X_train['class'] == 1)].shape
-    print X_test[(X_test['class'] == 1)].shape
+    print(X.shape)
+    print(X_train[(X_train['class'] == 1)].shape)
+    print(X_test[(X_test['class'] == 1)].shape)
 
     sum_w = X_train['wt_xs'].sum()
     sum_w_cat = X_train.groupby('multi_class')['wt_xs'].sum()
@@ -73,11 +75,11 @@ def fit_ttsplit(X, channel, fold):
 
     class_weight_dict = dict(class_weights)
 
-    print class_weight_dict
+    print(class_weight_dict)
 
     # multiply w_train by class_weight now
     for i in w_train.index:
-        for key, value in class_weight_dict.iteritems():
+        for key, value in class_weight_dict.items():
             if y_train[i] == key:
                     w_train.at[i] *= value
                     # if key == 'ggh':
@@ -98,8 +100,8 @@ def fit_ttsplit(X, channel, fold):
     orig_columns = X_train.columns
     X_train.columns = ["f{}".format(x) for x in np.arange(X_train.shape[1])]
     X_test.columns = ["f{}".format(x) for x in np.arange(X_train.shape[1])]
-    print orig_columns
-    print X_train.columns
+    print(orig_columns)
+    print(X_train.columns)
 
     params = {
             'objective':'binary:logistic',
@@ -130,19 +132,19 @@ def fit_ttsplit(X, channel, fold):
     # evals_result = xgb_clf.evals_result()
 
     y_predict = xgb_clf.predict(X_test)
-    print y_predict
+    print(y_predict)
 
-    print classification_report(
+    print(classification_report(
             y_test,
             y_predict,
             target_names=["ggh", "qqh"],
             sample_weight=w_test
-            )
+            ))
 
 
     y_pred = xgb_clf.predict_proba(X_test)
 
-    print y_pred
+    print(y_pred)
     # proba_predict_train = xgb_clf.predict_proba(X_train)[:,1]
     # proba_predict_test = xgb_clf.predict_proba(X_test)[:,1]
 
@@ -173,10 +175,10 @@ def fit_ttsplit(X, channel, fold):
     with open('binary_{}_fold{}_xgb.pkl'.format(channel,fold), 'w') as f:
         pickle.dump(xgb_clf, f)
 
-    print xgb_clf.feature_importances_
+    print(xgb_clf.feature_importances_)
     
     auc = roc_auc_score(y_test, y_pred[:,1])
-    print auc
+    print(auc)
     fpr, tpr, _ = roc_curve(y_test, y_pred[:,1])
 
     pf.plot_roc_curve(
@@ -253,7 +255,7 @@ def fit_rhottsplit(X, channel, fold):
 
     # X["Epi_tau_1"] = X.Epi_1 / X.E_1
     # X["Epi_tau_2"] = X.Epi_2 / X.E_2
-    print(X.Mrho)
+    print((X.Mrho))
 
     X_train,X_test, y_train,y_test,w_train,w_test  = train_test_split(
             X,
@@ -263,9 +265,9 @@ def fit_rhottsplit(X, channel, fold):
             random_state=123456,
             stratify=X['class'].as_matrix(),
             )
-    print X.shape
-    print X_train[(X_train['class'] == 1)].shape
-    print X_test[(X_test['class'] == 1)].shape
+    print(X.shape)
+    print(X_train[(X_train['class'] == 1)].shape)
+    print(X_test[(X_test['class'] == 1)].shape)
 
     sum_w = X_train['wt_xs'].sum()
     sum_w_cat = X_train.groupby('class')['wt_xs'].sum()
@@ -273,7 +275,7 @@ def fit_rhottsplit(X, channel, fold):
 
     class_weight_dict = dict(class_weights)
 
-    print class_weight_dict
+    print(class_weight_dict)
 
     # multiply w_train by class_weight now
     # for i in w_train.index:
@@ -298,8 +300,8 @@ def fit_rhottsplit(X, channel, fold):
     orig_columns = X_train.columns
     X_train.columns = ["f{}".format(x) for x in np.arange(X_train.shape[1])]
     X_test.columns = ["f{}".format(x) for x in np.arange(X_train.shape[1])]
-    print orig_columns
-    print X_train.columns
+    print(orig_columns)
+    print(X_train.columns)
 
     params = {
             'objective':'binary:logistic',
@@ -330,14 +332,14 @@ def fit_rhottsplit(X, channel, fold):
     # evals_result = xgb_clf.evals_result()
 
     y_predict = xgb_clf.predict(X_test)
-    print y_predict
+    print(y_predict)
 
-    print classification_report(
+    print(classification_report(
             y_test,
             y_predict,
             target_names=["ggh_rho", "ggh_bkg"],
             sample_weight=w_test
-            )
+            ))
 
 
     y_pred = xgb_clf.predict_proba(X_test)
@@ -373,7 +375,7 @@ def fit_rhottsplit(X, channel, fold):
         pickle.dump(xgb_clf, f)
 
     auc = roc_auc_score(y_test, y_pred[:,1])
-    print auc
+    print(auc)
     fpr, tpr, _ = roc_curve(y_test, y_pred[:,1])
 
     pf.plot_roc_curve(
@@ -440,7 +442,7 @@ def fit_sssplit(X, folds, channel, sig_sample):
     mean_fpr = np.linspace(0, 1, 100)
 
     for i, (train_index, test_index) in enumerate(sss.split(X, y)):
-        print 'Fold {}/{}'.format(i+1, folds)
+        print('Fold {}/{}'.format(i+1, folds))
         X_train, X_test = X.loc[train_index,:], X.loc[test_index,:]
         y_train, y_test = y[train_index], y[test_index]
         w_train, w_test = X_train['wt'], X_test['wt']
@@ -598,14 +600,14 @@ def fit_gbc_ttsplit(X, channel, sig_sample):
     # evals_result = gbc_clf.evals_result()
 
     y_predict = gbc_clf.predict(X_test)
-    print y_predict
+    print(y_predict)
 
-    print classification_report(
+    print(classification_report(
             y_test,
             y_predict,
             target_names=["background", "signal"],
             sample_weight=w_test
-            )
+            ))
 
 
     decisions = gbc_clf.decision_function(X_test)
@@ -620,7 +622,7 @@ def fit_gbc_ttsplit(X, channel, sig_sample):
     fpr, tpr, _ = roc_curve(y_test, decisions)
     roc_auc = auc(fpr,tpr)
 
-    print roc_auc
+    print(roc_auc)
 
 #     pf.plot_roc_curve(
 #             fpr, tpr, roc_auc,
@@ -813,12 +815,12 @@ def fit_multiclass_ttsplit(X, analysis, channel, sig_sample):
 
     class_weight_dict = dict(class_weights)
 
-    print class_weight_dict
+    print(class_weight_dict)
 
     # multiply w_train by class_weight now
 
     for i in w_train.index:
-        for key, value in class_weight_dict.iteritems():
+        for key, value in class_weight_dict.items():
         # print 'before: ',index, row
             if y_train[i] == key:
                 if key == 'ggh':
@@ -862,8 +864,8 @@ def fit_multiclass_ttsplit(X, analysis, channel, sig_sample):
         'gen_match_1', 'gen_match_2'
         ], axis=1).reset_index(drop=True)
 
-    print X_train.shape
-    print X_test.shape
+    print(X_train.shape)
+    print(X_test.shape)
 
 
     ## standard scaler
@@ -1016,22 +1018,22 @@ def fit_multiclass_ttsplit(X, analysis, channel, sig_sample):
     # evals_result = xgb_clf.evals_result()
 
     y_predict = xgb_clf.predict(X_test)
-    print 'true label: {},{},{}'.format(y_test[0],y_test[1],y_test[2])
-    print 'predicted label: {},{},{}'.format(y_predict[0],y_predict[1],y_predict[2])
+    print('true label: {},{},{}'.format(y_test[0],y_test[1],y_test[2]))
+    print('predicted label: {},{},{}'.format(y_predict[0],y_predict[1],y_predict[2]))
 
-    print '\n Mean Square Error: {}'.format(mean_squared_error(y_test,y_predict))
+    print('\n Mean Square Error: {}'.format(mean_squared_error(y_test,y_predict)))
 
-    print classification_report(
+    print(classification_report(
             y_test,
             y_predict,
             # target_names=["background", "signal"],
             target_names=list(encoder_test.classes_),
             sample_weight=w_test
-            )
+            ))
 
 
     y_pred = xgb_clf.predict_proba(X_test)
-    print 'highest proba: {},{},{}'.format(max(y_pred[0]),max(y_pred[1]),max(y_pred[2]))
+    print('highest proba: {},{},{}'.format(max(y_pred[0]),max(y_pred[1]),max(y_pred[2])))
 
 
     with open('multi_{}_{}_{}_xgb.pkl'.format(analysis, channel, sig_sample), 'w') as f:
@@ -1089,16 +1091,20 @@ def fit_multiclass_ttsplit(X, analysis, channel, sig_sample):
 def fit_multiclass_kfold(X, fold, analysis, channel, sig_sample, mjj_training):
 
     ## START EDITING THIS FOR ODD/EVEN SPLIT
-    print 'Training XGBoost model fold{}'.format(fold)
-    print X.columns
-    print X[X.multi_class == "ggh"].wt_xs
+    print('Training XGBoost model fold{}'.format(fold))
+    print(X.columns)
+    print(X[X.multi_class == "ggh"].wt_xs)
     
     if mjj_training == "high":
         X = X[X["multi_class"] != "misc"]
         if channel == "em":
             X = X[X["multi_class"] != "qcd"]
 
-        X.multi_class.replace("qqh","ggh",inplace=True)
+        # merge ggh and qqh
+        # X.multi_class.replace("qqh","ggh",inplace=True)
+
+        # drop ggh entirely and train for qqh
+        X = X[X["multi_class"] != "ggh"]
 
 
     # for x in X.columns:
@@ -1126,8 +1132,8 @@ def fit_multiclass_kfold(X, fold, analysis, channel, sig_sample, mjj_training):
         X["dphi_custom"] = np.arccos(1-X.mt_lep**2/(2.*X.pt_1*X.pt_2))
         X["dR_custom"] = np.sqrt((X.eta_1-X.eta_2)**2 + (X.dphi_custom)**2)
         # X["msv_rec"] = 1. / X.m_sv
-        X["rms_pt"] = np.sqrt(0.5 * (X.pt_1**2 + X.pt_2**2))
-        X["rms_jpt"] = np.sqrt(0.5 * (X.jpt_1**2 + X.jpt_2**2))
+        # X["rms_pt"] = np.sqrt(0.5 * (X.pt_1**2 + X.pt_2**2))
+        # X["rms_jpt"] = np.sqrt(0.5 * (X.jpt_1**2 + X.jpt_2**2))
 
         # X["centrality_l1"] = np.exp(-4*np.fabs(X.eta_1-(X.jeta_1 + X.jeta_2)/2.)/X.jdeta**2)
         # X["centrality_l2"] = np.exp(-4*np.fabs(X.eta_2-(X.jeta_1 + X.jeta_2)/2.)/X.jdeta**2)
@@ -1142,11 +1148,11 @@ def fit_multiclass_kfold(X, fold, analysis, channel, sig_sample, mjj_training):
         #             bins=100
         #             )
     
-        # # make zeppenfeld variable
-        # X["zfeld"] = np.fabs(X.eta_h - (X.jeta_1 + X.jeta_2)/2.)
-        # # print X["zfeld"]
-        # # make centrality variable
-        # X["centrality"] = np.exp(-4*(X.zfeld/np.fabs(X.jdeta))**2)
+        # make zeppenfeld variable
+        X["zfeld"] = np.fabs(X.eta_h - (X.jeta_1 + X.jeta_2)/2.)
+        # print X["zfeld"]
+        # make centrality variable
+        X["centrality"] = np.exp(-4*(X.zfeld/np.fabs(X.jdeta))**2)
 
     if mjj_training == "low":
         X = X[X["multi_class"] != "misc"]
@@ -1163,7 +1169,7 @@ def fit_multiclass_kfold(X, fold, analysis, channel, sig_sample, mjj_training):
         stratify=X['multi_class'].as_matrix(),
         )
 
-    print X_train[(X_train.multi_class == 'ggh')].shape
+    print(X_train[(X_train.multi_class == 'ggh')].shape)
     del X
     gc.collect()
 
@@ -1179,13 +1185,13 @@ def fit_multiclass_kfold(X, fold, analysis, channel, sig_sample, mjj_training):
 
     class_weight_dict = dict(class_weights)
 
-    print class_weight_dict
+    print(class_weight_dict)
 
     # multiply w_train by class_weight now
     # add mjj dependent weight for ggH
 
     for i in w_train.index:
-        for key, value in class_weight_dict.iteritems():
+        for key, value in class_weight_dict.items():
             if y_train[i] == key:
                 if key == "ggh" and mjj_training == "high":
                     # print 'before: ',w_train.at[i]
@@ -1233,7 +1239,7 @@ def fit_multiclass_kfold(X, fold, analysis, channel, sig_sample, mjj_training):
     # print 'original Y: ', X_train['multi_class'].head()
     # print 'one-hot y: ', y_train
 
-    print X_train.head(5)
+    print(X_train.head(5))
 
     X_train = X_train.drop([
         'wt','wt_xs', 'process', 'multi_class','event',
@@ -1260,8 +1266,8 @@ def fit_multiclass_kfold(X, fold, analysis, channel, sig_sample, mjj_training):
         X_train = X_train.drop(["wt_em_qcd"], axis=1).reset_index(drop=True)
         X_test = X_test.drop(["wt_em_qcd"], axis=1).reset_index(drop=True)
     if mjj_training == "high":
-        X_train = X_train.drop(["dphi_custom","dR","opp_sides"], axis=1).reset_index(drop=True)
-        X_test = X_test.drop(["dphi_custom","dR","opp_sides"], axis=1).reset_index(drop=True)
+        X_train = X_train.drop(["dphi_custom"], axis=1).reset_index(drop=True)
+        X_test = X_test.drop(["dphi_custom"], axis=1).reset_index(drop=True)
     if mjj_training == "low":
         X_train = X_train.drop(["dphi_custom"], axis=1).reset_index(drop=True)
         X_test = X_test.drop(["dphi_custom"], axis=1).reset_index(drop=True)
@@ -1319,11 +1325,11 @@ def fit_multiclass_kfold(X, fold, analysis, channel, sig_sample, mjj_training):
     #     ], axis=1).reset_index(drop=True)
 
     # to use names "f0" etcs
-    print X_train.columns
+    print(X_train.columns)
     orig_columns = X_train.columns
     X_train.columns = ["f{}".format(x) for x in np.arange(X_train.shape[1])]
     X_test.columns = ["f{}".format(x) for x in np.arange(X_train.shape[1])]
-    print X_train.columns
+    print(X_train.columns)
 
 
     ## SOME TESTS WITH WEIGHTS
@@ -1715,28 +1721,42 @@ def fit_multiclass_kfold(X, fold, analysis, channel, sig_sample, mjj_training):
     # eli5 explanation
     # print explain_prediction_xgboost(xgb_clf.get_booster(),X_test.iloc[0])
 
+    # xgb_bo = BayesianOptimization(xgb_clf, {
+    #     "max_depth": (2,8),
+    #     "gamma": (0.001, 3.0),
+    #     "min_child_weight": (0, 20),
+    #     "max_delta_step": (0, 5),
+    #     "subsample": (0.4, 1.0),
+    #     "colsample_bytree": (0.4, 1.0),
+    #     "reg_lambda": (0.001, 1.0),
+    #     })
+    # print(("-"*100))
+    # xgb_bo.maximize(init_points=2, n_iter=5)
+    # print(('Maximum XGBOOST value: %f' % XGB_BO.res['max']['max_val']))
+    # print(('Best XGBOOST parameters: ', XGB_BO.res['max']['max_params']))
+
     # y_predict = selection.predict(X_test)
     y_predict = xgb_clf.predict(X_test)
-    print 'true label: {},{},{},{},{},{}'.format(y_test[0],y_test[1],y_test[2],y_test[3],y_test[4],y_test[5])
-    print 'predicted label: {},{},{},{},{},{}'.format(y_predict[0],y_predict[1],y_predict[2],y_predict[3],y_predict[4],y_predict[5])
+    print('true label: {},{},{},{},{},{}'.format(y_test[0],y_test[1],y_test[2],y_test[3],y_test[4],y_test[5]))
+    print('predicted label: {},{},{},{},{},{}'.format(y_predict[0],y_predict[1],y_predict[2],y_predict[3],y_predict[4],y_predict[5]))
 
-    print '\n Mean Square Error: {}'.format(mean_squared_error(y_test,y_predict))
+    print('\n Mean Square Error: {}'.format(mean_squared_error(y_test,y_predict)))
 
-    print classification_report(
+    print(classification_report(
             y_test,
             y_predict,
             # target_names=["background", "signal"],
             target_names=list(encoder_test.classes_),
             sample_weight=w_test
-            )
+            ))
 
 
     y_pred = xgb_clf.predict_proba(X_test)
-    print 'all probs: {} \n {} \n {}'.format(y_pred[0],y_pred[1],y_pred[2],y_pred[3],y_pred[4],y_pred[5])
-    print 'highest proba: {},{},{}'.format(max(y_pred[0]),max(y_pred[1]),max(y_pred[2]))
+    print('all probs: {} \n {} \n {}'.format(y_pred[0],y_pred[1],y_pred[2],y_pred[3],y_pred[4],y_pred[5]))
+    print('highest proba: {},{},{}'.format(max(y_pred[0]),max(y_pred[1]),max(y_pred[2])))
 
 
-    print xgb_clf
+    print(xgb_clf)
     with open('multi_fold{}_{}_{}_{}_{}_xgb.pkl'.format(fold, analysis, channel, sig_sample, mjj_training), 'w') as f:
         pickle.dump(xgb_clf, f)
 
@@ -1807,8 +1827,8 @@ def fit_multiclass_kfold(X, fold, analysis, channel, sig_sample, mjj_training):
 def fit_multiclass_kfold_inc(X, fold, analysis, channel, sig_sample, era):
 
     ## START EDITING THIS FOR ODD/EVEN SPLIT
-    print 'Training XGBoost model fold{}'.format(fold)
-    print X.columns
+    print('Training XGBoost model fold{}'.format(fold))
+    print(X.columns)
     
     # X = X[X["multi_class"] != "misc"]
     if channel == "em":
@@ -1837,7 +1857,7 @@ def fit_multiclass_kfold_inc(X, fold, analysis, channel, sig_sample, era):
         stratify=X['multi_class'].as_matrix(),
         )
 
-    print X_train[(X_train.multi_class == 'ggh')].shape
+    print(X_train[(X_train.multi_class == 'ggh')].shape)
     del X
     gc.collect()
 
@@ -1852,13 +1872,13 @@ def fit_multiclass_kfold_inc(X, fold, analysis, channel, sig_sample, era):
 
     class_weight_dict = dict(class_weights)
 
-    print class_weight_dict
+    print(class_weight_dict)
 
     # multiply w_train by class_weight now
     # add mjj dependent weight for ggH
 
     for i in w_train.index:
-        for key, value in class_weight_dict.iteritems():
+        for key, value in class_weight_dict.items():
             if y_train[i] == key:
                 w_train.at[i] *= value
 
@@ -1873,18 +1893,18 @@ def fit_multiclass_kfold_inc(X, fold, analysis, channel, sig_sample, era):
     encoder_test.fit(y_test)
     y_test = encoder_test.transform(y_test)
 
-    print X_train.head(5)
+    print(X_train.head(5))
 
     X_train = X_train.drop([
         'wt','wt_xs', 'process', 'multi_class','event',
         'gen_match_1', 'gen_match_2',
-        'zfeld','jeta_1','jeta_2','m_sv',
+        'zfeld','jeta_1'
         ], axis=1).reset_index(drop=True)
 
     X_test = X_test.drop([
         'wt','wt_xs', 'process', 'multi_class','event',
         'gen_match_1', 'gen_match_2',
-        'zfeld','jeta_1','jeta_2','m_sv'
+        'zfeld','jeta_1'
         ], axis=1).reset_index(drop=True)
 
     X_train = X_train.drop(["dphi_custom"], axis=1).reset_index(drop=True)
@@ -1939,11 +1959,11 @@ def fit_multiclass_kfold_inc(X, fold, analysis, channel, sig_sample, era):
     #     ], axis=1).reset_index(drop=True)
 
     # to use names "f0" etcs
-    print X_train.columns
+    print(X_train.columns)
     orig_columns = X_train.columns
     X_train.columns = ["f{}".format(x) for x in np.arange(X_train.shape[1])]
     X_test.columns = ["f{}".format(x) for x in np.arange(X_train.shape[1])]
-    print X_train.columns
+    print(X_train.columns)
 
 
     ## SOME TESTS WITH WEIGHTS
@@ -1960,7 +1980,7 @@ def fit_multiclass_kfold_inc(X, fold, analysis, channel, sig_sample, era):
     if channel in ['tt']:
         params = {
                 'objective':'multi:softprob',
-                'max_depth':6,
+                'max_depth':4,
                 'min_child_weight':1,
                 'learning_rate':0.05,
                 'silent':1,
@@ -1977,16 +1997,16 @@ def fit_multiclass_kfold_inc(X, fold, analysis, channel, sig_sample, era):
     if channel in ['mt','et']:
         params = {
                 'objective':'multi:softprob',
-                'max_depth':6,
-                'min_child_weight':1,
-                'learning_rate':0.05,
-                'silent':1,
+                'max_depth':4,
+                # 'min_child_weight':1,
+                'learning_rate':1,
+                'silent':0.5,
                 # 'scale_pos_weight':1,
                 'n_estimators':10000,
-                'gamma':0.1,
-                'reg_lambda':0.3,
-                'subsample':0.8,
-                # 'colsample_bytree':0.6,
+                # 'gamma':0.1,
+                # 'reg_lambda':0.3,
+                'subsample':0.9,
+                'colsample_bytree':0.6,
                 # 'max_delta_step':5,
                 'nthread':-1,
                 # 'missing':-100.0,
@@ -1995,7 +2015,7 @@ def fit_multiclass_kfold_inc(X, fold, analysis, channel, sig_sample, era):
     if channel in ['em']:
         params = {
                 'objective':'multi:softprob',
-                'max_depth':6,
+                'max_depth':4,
                 'min_child_weight':1,
                 'learning_rate':0.05,
                 'silent':1,
@@ -2050,26 +2070,26 @@ def fit_multiclass_kfold_inc(X, fold, analysis, channel, sig_sample, era):
 
     # y_predict = selection.predict(X_test)
     y_predict = xgb_clf.predict(X_test)
-    print 'true label: {},{},{},{},{},{}'.format(y_test[0],y_test[1],y_test[2],y_test[3],y_test[4],y_test[5])
-    print 'predicted label: {},{},{},{},{},{}'.format(y_predict[0],y_predict[1],y_predict[2],y_predict[3],y_predict[4],y_predict[5])
+    print('true label: {},{},{},{},{},{}'.format(y_test[0],y_test[1],y_test[2],y_test[3],y_test[4],y_test[5]))
+    print('predicted label: {},{},{},{},{},{}'.format(y_predict[0],y_predict[1],y_predict[2],y_predict[3],y_predict[4],y_predict[5]))
 
-    print '\n Mean Square Error: {}'.format(mean_squared_error(y_test,y_predict))
+    print('\n Mean Square Error: {}'.format(mean_squared_error(y_test,y_predict)))
 
-    print classification_report(
+    print(classification_report(
             y_test,
             y_predict,
             # target_names=["background", "signal"],
             target_names=list(encoder_test.classes_),
             sample_weight=w_test
-            )
+            ))
 
 
     y_pred = xgb_clf.predict_proba(X_test)
-    print 'all probs: {} \n {} \n {}'.format(y_pred[0],y_pred[1],y_pred[2],y_pred[3],y_pred[4],y_pred[5])
-    print 'highest proba: {},{},{}'.format(max(y_pred[0]),max(y_pred[1]),max(y_pred[2]))
+    print('all probs: {} \n {} \n {}'.format(y_pred[0],y_pred[1],y_pred[2],y_pred[3],y_pred[4],y_pred[5]))
+    print('highest proba: {},{},{}'.format(max(y_pred[0]),max(y_pred[1]),max(y_pred[2])))
 
 
-    print xgb_clf
+    print(xgb_clf)
     with open('multi_fold{}_{}_{}_{}_{}_xgb.pkl'.format(fold, analysis, channel, sig_sample, era), 'w') as f:
         pickle.dump(xgb_clf, f)
 
@@ -2140,7 +2160,7 @@ def fit_multiclass_kfold_inc(X, fold, analysis, channel, sig_sample, era):
 def fit_multiclass_cvkfold(X, fold, analysis, channel, sig_sample):
 
     ## START EDITING THIS FOR ODD/EVEN SPLIT
-    print 'Training XGBoost model fold{}'.format(fold)
+    print('Training XGBoost model fold{}'.format(fold))
 
 
     numFolds = 4
@@ -2153,12 +2173,12 @@ def fit_multiclass_cvkfold(X, fold, analysis, channel, sig_sample):
     X = X.reset_index(drop=True)
 
     for train_index, test_index in folds.split(X,X['multi_class']):
-        print train_index
+        print(train_index)
         X_train, X_test = X.iloc[train_index], X.iloc[test_index]
         y_train, y_test = X['multi_class'][train_index], X['multi_class'][test_index]
         w_train, w_test = X['wt_xs'][train_index], X['wt_xs'][test_index]
 
-        print X_train[(X_train.multi_class == 'ggh')].shape
+        print(X_train[(X_train.multi_class == 'ggh')].shape)
 
         sum_w = X_train['wt_xs'].sum()
         # print 'sum_w', sum_w
@@ -2168,12 +2188,12 @@ def fit_multiclass_cvkfold(X, fold, analysis, channel, sig_sample):
 
         class_weight_dict = dict(class_weights)
 
-        print class_weight_dict
+        print(class_weight_dict)
 
         # multiply w_train by class_weight now
 
         for i in w_train.index:
-            for key, value in class_weight_dict.iteritems():
+            for key, value in class_weight_dict.items():
             # print 'before: ',index, row
                 if y_train[i] == key:
                     # if key == 'ggh':
@@ -2207,11 +2227,11 @@ def fit_multiclass_cvkfold(X, fold, analysis, channel, sig_sample):
             ], axis=1).reset_index(drop=True)
 
         # to use names "f0" etcs
-        print X_train.columns
+        print(X_train.columns)
         orig_columns = X_train.columns
         X_train.columns = ["f{}".format(x) for x in np.arange(X_train.shape[1])]
         X_test.columns = ["f{}".format(x) for x in np.arange(X_train.shape[1])]
-        print X_train.columns
+        print(X_train.columns)
 
         ## standard scaler
         # scaler = StandardScaler()
@@ -2395,7 +2415,7 @@ def fit_multiclass_cvkfold(X, fold, analysis, channel, sig_sample):
             #             }
 
 
-        print params
+        print(params)
         xgb_clf = xgb.XGBClassifier(**params)
 
 
@@ -2446,23 +2466,23 @@ def fit_multiclass_cvkfold(X, fold, analysis, channel, sig_sample):
         # evals_result = xgb_clf.evals_result()
 
         y_predict = xgb_clf.predict(X_test)
-        print 'true label: {},{},{}'.format(y_test[0],y_test[1],y_test[2])
-        print 'predicted label: {},{},{}'.format(y_predict[0],y_predict[1],y_predict[2])
+        print('true label: {},{},{}'.format(y_test[0],y_test[1],y_test[2]))
+        print('predicted label: {},{},{}'.format(y_predict[0],y_predict[1],y_predict[2]))
 
-        print '\n Mean Square Error: {}'.format(mean_squared_error(y_test,y_predict))
+        print('\n Mean Square Error: {}'.format(mean_squared_error(y_test,y_predict)))
 
-        print classification_report(
+        print(classification_report(
                 y_test,
                 y_predict,
                 # target_names=["background", "signal"],
                 target_names=list(encoder_test.classes_),
                 sample_weight=w_test
-                )
+                ))
 
 
         y_pred = xgb_clf.predict_proba(X_test)
-        print 'all probs: {} \n {} \n {}'.format(y_pred[0],y_pred[1],y_pred[2])
-        print 'highest proba: {},{},{}'.format(max(y_pred[0]),max(y_pred[1]),max(y_pred[2]))
+        print('all probs: {} \n {} \n {}'.format(y_pred[0],y_pred[1],y_pred[2]))
+        print('highest proba: {},{},{}'.format(max(y_pred[0]),max(y_pred[1]),max(y_pred[2])))
 
 
         # with open('multi_fold{}_{}_{}_{}_xgb.pkl'.format(fold, analysis, channel, sig_sample), 'w') as f:
@@ -2520,11 +2540,11 @@ def fit_multiclass_cvkfold(X, fold, analysis, channel, sig_sample):
 
 
         estimators.append(xgb_clf.best_iteration)
-        print estimators
+        print(estimators)
         results[test_index] = xgb_clf.predict(X_test)
         score += f1_score(y_test, results[test_index],average='micro',sample_weight=w_test)
     score /= numFolds
-    print score
+    print(score)
 
     return None
 
@@ -2535,7 +2555,7 @@ def fit_sklearnNN(X, channel, fold, analysis, sig_sample, mjj_training):
 
 
     ## START EDITING THIS FOR ODD/EVEN SPLIT
-    print 'Training keras model fold{}'.format(fold)
+    print('Training keras model fold{}'.format(fold))
 
     if mjj_training == "high":
         X = X[X["multi_class"] != "misc"]
@@ -2561,12 +2581,12 @@ def fit_sklearnNN(X, channel, fold, analysis, sig_sample, mjj_training):
 
     class_weight_dict = dict(class_weights)
 
-    print class_weight_dict
+    print(class_weight_dict)
 
     # multiply w_train by class_weight now
 
     for i in w_train.index:
-        for key, value in class_weight_dict.iteritems():
+        for key, value in class_weight_dict.items():
             if y_train[i] == key:
                 # if key == "ggh" and mjj_training == "high":
                     # w_train.at[i] *= value * 1.5/3.
@@ -2589,8 +2609,8 @@ def fit_sklearnNN(X, channel, fold, analysis, sig_sample, mjj_training):
     # convert integers to dummy variables (i.e. one hot encoded)
     y_test = np_utils.to_categorical(encoded_y_test, num_classes=3)
     
-    print 'original Y: ', X_train['multi_class'].head()
-    print 'one-hot y: ', y_train[0]
+    print('original Y: ', X_train['multi_class'].head())
+    print('one-hot y: ', y_train[0])
 
 
     X_train = X_train.drop([
@@ -2607,11 +2627,11 @@ def fit_sklearnNN(X, channel, fold, analysis, sig_sample, mjj_training):
         X_test = X_test.drop(["wt_em_qcd"], axis=1).reset_index(drop=True)
 
     # to use names "f0" etcs
-    print X_train.columns
+    print(X_train.columns)
     orig_columns = X_train.columns
     X_train.columns = ["f{}".format(x) for x in np.arange(X_train.shape[1])]
     X_test.columns = ["f{}".format(x) for x in np.arange(X_train.shape[1])]
-    print X_train.columns
+    print(X_train.columns)
 
     ## standard scaler
     columns = X_train.columns
@@ -2641,8 +2661,8 @@ def fit_sklearnNN(X, channel, fold, analysis, sig_sample, mjj_training):
             y_train,
             )
 
-    print clf.score(scaled_test,y_test,w_test)
-    print clf.predict(scaled_test)
+    print(clf.score(scaled_test,y_test,w_test))
+    print(clf.predict(scaled_test))
 
     # with open('keras_model_fold{}_{}_{}_{}_{}_xgb.pkl'.format(fold, analysis, channel, sig_sample, mjj_training), 'w') as f:
     #     pickle.dump(model,f)
@@ -2659,7 +2679,7 @@ def fit_keras(X, channel, fold, analysis, sig_sample, mjj_training):
 
 
     ## START EDITING THIS FOR ODD/EVEN SPLIT
-    print 'Training keras model fold{}'.format(fold)
+    print('Training keras model fold{}'.format(fold))
 
     if mjj_training == "high":
         X = X[X["multi_class"] != "misc"]
@@ -2694,12 +2714,12 @@ def fit_keras(X, channel, fold, analysis, sig_sample, mjj_training):
 
     class_weight_dict = dict(class_weights)
 
-    print class_weight_dict
+    print(class_weight_dict)
 
     # multiply w_train by class_weight now
 
     for i in w_train.index:
-        for key, value in class_weight_dict.iteritems():
+        for key, value in class_weight_dict.items():
             if y_train[i] == key:
                 # if key == "ggh" and mjj_training == "high":
                     # w_train.at[i] *= value * 1.5/3.
@@ -2722,8 +2742,8 @@ def fit_keras(X, channel, fold, analysis, sig_sample, mjj_training):
     # convert integers to dummy variables (i.e. one hot encoded)
     y_test = np_utils.to_categorical(encoded_y_test, num_classes=3)
     
-    print 'original Y: ', X_train['multi_class'].head()
-    print 'one-hot y: ', y_train[0]
+    print('original Y: ', X_train['multi_class'].head())
+    print('one-hot y: ', y_train[0])
 
 
     X_train = X_train.drop([
@@ -2740,11 +2760,11 @@ def fit_keras(X, channel, fold, analysis, sig_sample, mjj_training):
         X_test = X_test.drop(["wt_em_qcd"], axis=1).reset_index(drop=True)
 
     # to use names "f0" etcs
-    print X_train.columns
+    print(X_train.columns)
     orig_columns = X_train.columns
     X_train.columns = ["f{}".format(x) for x in np.arange(X_train.shape[1])]
     X_test.columns = ["f{}".format(x) for x in np.arange(X_train.shape[1])]
-    print X_train.columns
+    print(X_train.columns)
 
     ## standard scaler
     columns = X_train.columns
@@ -2765,13 +2785,13 @@ def fit_keras(X, channel, fold, analysis, sig_sample, mjj_training):
     # X_test = X_test.drop(["wt"], axis=1).reset_index(drop=True)
 
     min_maxscaler = MinMaxScaler()
-    print w_train
+    print(w_train)
     scaled_w_train = min_maxscaler.fit_transform(w_train.values.reshape(-1,1))
-    print scaled_w_train
+    print(scaled_w_train)
     scaled_w_test = min_maxscaler.transform(w_test.values.reshape(-1,1))
 
-    print(scaled_w_train.mean())
-    print(scaled_w_train.mean())
+    print((scaled_w_train.mean()))
+    print((scaled_w_train.mean()))
 
     ## how many features
     num_inputs = scaled_train.shape[1]
@@ -2846,13 +2866,173 @@ def fit_keras(X, channel, fold, analysis, sig_sample, mjj_training):
 
     return None
 
+def fit_keras_inc(X, channel, fold, analysis, sig_sample):
+    ### TEST A KERAS MODEL
+
+
+    ## START EDITING THIS FOR ODD/EVEN SPLIT
+    print('Training keras model fold{}'.format(fold))
+
+    # X.multi_class.replace("qqh","ggh",inplace=True)
+    X = X[X["multi_class"] != "misc"]
+
+    # X["zfeld"] = np.fabs(X.eta_h - (X.jeta_1 + X.jeta_2)/2.)
+    # # print X["zfeld"]
+    # # make centrality variable
+    # X["centrality"] = np.exp(-4*(X.zfeld/np.fabs(X.jdeta))**2)
+
+    # X["dphi_custom"] = np.arccos(1-X.mt_lep**2/(2.*X.pt_1*X.pt_2))
+    # X["dR_custom"] = np.sqrt((X.eta_1-X.eta_2)**2 + (X.dphi_custom)**2)
+
+    sum_w = X['wt_xs'].sum()
+    sum_w_cat = X.groupby('multi_class')['wt_xs'].sum()
+    class_weights = sum_w / sum_w_cat
+
+    class_weight_dict = dict(class_weights)
+
+    print(class_weight_dict)
+
+
+    # split
+    X_train,X_test, y_train,y_test,w_train,w_test  = train_test_split(
+        X,
+        X['multi_class'],
+        X['wt_xs'],
+        test_size=0.25,
+        random_state=123456,
+        stratify=X['multi_class'].values,
+        )
+
+    # multiply w_train by class_weight now
+    for i in w_train.index:
+        for key, value in class_weight_dict.items():
+            if y_train[i] == key:
+                w_train.at[i] *= value
+
+    
+
+    ## use one-hot encoding
+    # encode class values as integers
+    encoder = LabelEncoder()
+    encoder.fit(y_train)
+    encoded_y_train = encoder.transform(y_train)
+    # convert integers to dummy variables (i.e. one hot encoded)
+    y_train = np_utils.to_categorical(encoded_y_train, num_classes=len(class_weight_dict.keys()))
+    encoder.fit(y_test)
+    encoded_y_test = encoder.transform(y_test)
+    # convert integers to dummy variables (i.e. one hot encoded)
+    y_test = np_utils.to_categorical(encoded_y_test, num_classes=len(class_weight_dict.keys()))
+    
+    print('original Y: ', X_train['multi_class'].head())
+    print('one-hot y: ', y_train[0])
+
+
+    X_train = X_train.drop([
+        'wt','wt_xs', 'process', 'multi_class','event','gen_match_1', 'gen_match_2',
+        # 'zfeld','eta_h','eta_1','eta_2'
+        ], axis=1).reset_index(drop=True)
+
+    X_test = X_test.drop([
+        'wt','wt_xs', 'process', 'multi_class','event','gen_match_1', 'gen_match_2',
+        # 'zfeld','eta_h','eta_1','eta_2'
+        ], axis=1).reset_index(drop=True)
+    if channel == "em":
+        X_train = X_train.drop(["wt_em_qcd"], axis=1).reset_index(drop=True)
+        X_test = X_test.drop(["wt_em_qcd"], axis=1).reset_index(drop=True)
+
+    # to use names "f0" etcs
+    print(X_train.columns)
+    orig_columns = X_train.columns
+    X_train.columns = ["f{}".format(x) for x in np.arange(X_train.shape[1])]
+    X_test.columns = ["f{}".format(x) for x in np.arange(X_train.shape[1])]
+    print(X_train.columns)
+
+    ## standard scaler
+    columns = X_train.columns
+    scaler = StandardScaler()
+    np_scaled_train = scaler.fit_transform(X_train.values)
+    with open('{}_scaler.pkl'.format(channel), 'w') as f:
+        pickle.dump(scaler, f)
+
+    scaled_train = np_scaled_train
+    # scaled_train = pd.DataFrame(np_scaled_train)
+    # scaled_train.columns = columns
+
+    np_scaled_test = scaler.transform(X_test.values)
+    scaled_test = np_scaled_test
+    # scaled_test = pd.DataFrame(np_scaled_test)
+    # scaled_test.columns = columns
+    # X_train = X_train.drop(["wt"], axis=1).reset_index(drop=True)
+    # X_test = X_test.drop(["wt"], axis=1).reset_index(drop=True)
+
+    min_maxscaler = MinMaxScaler()
+    scaled_w_train = min_maxscaler.fit_transform(w_train.values.reshape(-1,1))
+    scaled_w_test = min_maxscaler.transform(w_test.values.reshape(-1,1))
+
+    ## how many features
+    num_inputs = scaled_train.shape[1]
+    ## how many classes
+    num_outputs = y_train.shape[1]
+
+    from keras.models import Sequential
+    from keras.layers import *
+    from keras.optimizers import *
+    from keras.regularizers import l2
+    from theano.tensor import lt
+
+    model = Sequential()
+
+    for i, nodes in enumerate([200] * 2):
+        if i == 0:
+            model.add(Dense(nodes, kernel_regularizer=l2(1e-5), input_dim=num_inputs))
+        else:
+            model.add(Dense(nodes, kernel_regularizer=l2(1e-5)))
+        model.add(Activation("relu"))
+        # model.add(Dropout(0.3))
+
+    model.add(Dense(num_outputs, kernel_regularizer=l2(1e-5)))
+    model.add(Activation("softmax"))
+
+    model.compile(
+        loss="categorical_crossentropy", 
+        optimizer=Nadam(lr=1e-4), 
+        metrics=["categorical_accuracy"]
+        )
+
+
+    ## add early stopping
+    callbacks = []
+    callbacks.append(
+        EarlyStopping(patience=50)
+        )
+
+    model.summary()
+    model.fit(
+        # X_train,
+        scaled_train,
+        y_train,
+        # class_weight=test_class_weight,
+        sample_weight=scaled_w_train.squeeze(),
+        # validation_data=(X_test,y_test,w_test),
+        validation_data=(scaled_test,y_test,scaled_w_test.squeeze()),
+        batch_size=100,
+        epochs=10000,
+        shuffle=True,
+        callbacks=callbacks
+        )
+
+    model.save('keras_model_fold{}_{}_{}_{}.h5'
+            .format(fold, analysis, channel, sig_sample))
+
+    return None
+
 
 def fit_tf(X, channel, fold, analysis, sig_sample, mjj_training):
     ### TEST A KERAS MODEL
 
 
     ## START EDITING THIS FOR ODD/EVEN SPLIT
-    print 'Training keras model fold{}'.format(fold)
+    print('Training keras model fold{}'.format(fold))
 
     if mjj_training == "high":
         X = X[X["multi_class"] != "misc"]
@@ -2874,12 +3054,12 @@ def fit_tf(X, channel, fold, analysis, sig_sample, mjj_training):
 
     class_weight_dict = dict(class_weights)
 
-    print class_weight_dict
+    print(class_weight_dict)
 
     # multiply w_train by class_weight now
 
     for i in w_train.index:
-        for key, value in class_weight_dict.iteritems():
+        for key, value in class_weight_dict.items():
             if y_train[i] == key:
                 if key == "ggh" and mjj_training == "high":
                     # print 'before: ',w_train.at[i]
@@ -2919,8 +3099,8 @@ def fit_tf(X, channel, fold, analysis, sig_sample, mjj_training):
     # print w_train
     # w_test = minMax.fit_transform(w_test)
 
-    print 'original Y: ', X_train['multi_class'].head()
-    print 'one-hot y: ', y_train[0]
+    print('original Y: ', X_train['multi_class'].head())
+    print('one-hot y: ', y_train[0])
 
 
     X_train = X_train.drop([
@@ -2939,17 +3119,17 @@ def fit_tf(X, channel, fold, analysis, sig_sample, mjj_training):
         X_test = X_test.drop(["wt_em_qcd"], axis=1).reset_index(drop=True)
 
     # to use names "f0" etcs
-    print X_train.columns
+    print(X_train.columns)
     orig_columns = X_train.columns
     X_train.columns = ["f{}".format(x) for x in np.arange(X_train.shape[1])]
     X_test.columns = ["f{}".format(x) for x in np.arange(X_train.shape[1])]
-    print X_train.columns
+    print(X_train.columns)
 
     ## standard scaler
     columns = X_train.columns
     scaler = StandardScaler()
     # X_train['wt'] = w_train
-    print X_train.head(5)
+    print(X_train.head(5))
     np_scaled_train = scaler.fit_transform(X_train.as_matrix())
     # with open('{}_{}_scaler.pkl'.format(channel, mjj_training), 'w') as f:
     #     pickle.dump(scaler, f)
@@ -3044,16 +3224,16 @@ def fit_tf(X, channel, fold, analysis, sig_sample, mjj_training):
                 # Calculate batch loss and accuracy
                 loss, acc = sess.run([loss_op, accuracy], feed_dict={X: batch_x,
                                                                      Y: batch_y})
-                print("Step " + str(step) + ", Minibatch Loss= " + \
+                print(("Step " + str(step) + ", Minibatch Loss= " + \
                       "{:.4f}".format(loss) + ", Training Accuracy= " + \
-                      "{:.3f}".format(acc))
+                      "{:.3f}".format(acc)))
     
         print("Optimization Finished!")
     
         # Calculate accuracy for test 
-        print("Testing Accuracy:", \
+        print(("Testing Accuracy:", \
             sess.run(accuracy, feed_dict={X: scaled_test,
-                                          Y: y_test}))
+                                          Y: y_test})))
     
     # with open('keras_model_fold{}_{}_{}_{}_{}_xgb.pkl'.format(fold, analysis, channel, sig_sample, mjj_training), 'w') as f:
     #     pickle.dump(model,f)
@@ -3283,8 +3463,8 @@ def write_score(data, model, channel, doSystematics):
         df_dict = {x: gb.get_group(x) for x in gb.groups}
 
     score = []
-    for key, value in df_dict.iteritems():
-        print 'Writing into {}_{}_2016.root'.format(key, channel)
+    for key, value in df_dict.items():
+        print('Writing into {}_{}_2016.root'.format(key, channel))
         value = value.drop(['process'], axis=1)
         if len(data) > 0:
             score = model.predict_proba(value)[:,1]
@@ -3302,7 +3482,7 @@ def write_score(data, model, channel, doSystematics):
 
         if doSystematics:
             for systematic in systematics:
-                print 'Writing into {}/{}_{}_2016.root'.format(systematic, key, channel)
+                print('Writing into {}/{}_{}_2016.root'.format(systematic, key, channel))
 
                 array2root(
                     score,
@@ -3344,8 +3524,8 @@ def write_score_multi(data, model, analysis, channel, sig_sample, doSystematics,
         df_dict = {x: gb.get_group(x) for x in gb.groups}
 
     score = []
-    for key, value in df_dict.iteritems():
-        print 'Writing into {}_{}_2016.root'.format(key, channel)
+    for key, value in df_dict.items():
+        print('Writing into {}_{}_2016.root'.format(key, channel))
         value = value.drop(['process'], axis=1)
         if len(data) > 0:
             # assign event to max score class
@@ -3388,7 +3568,7 @@ def write_score_multi(data, model, analysis, channel, sig_sample, doSystematics,
 
         if doSystematics:
             for systematic in systematics:
-                print 'Writing into {}/{}_{}_2016.root'.format(systematic, key, channel)
+                print('Writing into {}/{}_{}_2016.root'.format(systematic, key, channel))
 
                 array2root(
                     np_score,
@@ -3417,8 +3597,8 @@ def write_score_multi_folds(data, model, analysis, channel, sig_sample, fold, na
         df_dict = {x: gb.get_group(x) for x in gb.groups}
 
     score = []
-    for key, value in df_dict.iteritems():
-        print 'Writing into {}_{}_2016.root'.format(key, channel)
+    for key, value in df_dict.items():
+        print('Writing into {}_{}_2016.root'.format(key, channel))
         value = value.drop(['process'], axis=1)
         if len(data) > 0:
             # assign event to max score class
@@ -3481,8 +3661,8 @@ def write_score_multi_syst(data, model, analysis, channel, sig_sample, fold, doS
         df_dict = {x: gb.get_group(x) for x in gb.groups}
 
     score = []
-    for key, value in df_dict.iteritems():
-        print 'Writing into {}_{}_2016.root'.format(key, channel)
+    for key, value in df_dict.items():
+        print('Writing into {}_{}_2016.root'.format(key, channel))
         value = value.drop(['process'], axis=1)
         if len(data) > 0:
             # assign event to max score class
@@ -3525,7 +3705,7 @@ def write_score_multi_syst(data, model, analysis, channel, sig_sample, fold, doS
 
         if doSystematics:
             for systematic in systematics:
-                print 'Writing into {}/{}_{}_2016.root'.format(systematic, key, channel)
+                print('Writing into {}/{}_{}_2016.root'.format(systematic, key, channel))
 
                 array2root(
                     np_score,
@@ -3545,9 +3725,9 @@ def write_score_multi_syst(data, model, analysis, channel, sig_sample, fold, doS
 
 def compute_class_weights(df):#, channel, sig_sample):
     # calculate sum of all event weights per category
-    print df['wt']
+    print(df['wt'])
     sum_w = df['wt'].sum()
-    print sum_w
+    print(sum_w)
 
     class_weights = []
     # calculate sum of event weights per category
