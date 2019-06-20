@@ -92,7 +92,8 @@ def main(opt):
 
     # this file contains information about the xsections, lumi and event numbers
     if opt.era == "2016":
-        params_file = json.load(open('Params_2016_smsummer16.json'))
+        # params_file = json.load(open('Params_2016_smsummer16.json'))
+        params_file = json.load(open('Params_2016_cpdecays16.json'))
     elif opt.era == "2017":
         params_file = json.load(open('Params_2017_smsummer17_v5.json'))
     lumi = params_file['MuonEG']['lumi']
@@ -165,7 +166,7 @@ def main(opt):
                 'mt_1', 'mt_2', 'mt_lep',
                 'm_vis', 'm_sv',#'pt_tt',# 'eta_tt',
                 'eta_h','pt_tt',
-                'met',# 'met_dphi_1', 'met_dphi_2',
+                'met','met_dphi_1', 'met_dphi_2',
                 'n_jets', 'n_bjets',
                 'pt_vis',
                 'mjj','jdeta',
@@ -173,6 +174,7 @@ def main(opt):
                 'dijetpt',
                 'jeta_1','jeta_2',
                 'mt_sv','mt_tot',
+                'dR',
                 #'IC_binary_test_4_score','IC_binary_test_4_index'
                 ]
             # if opt.channel == "tt":
@@ -205,11 +207,14 @@ def main(opt):
             if opt.channel == 'tt': # latest SM vars
                 features = [
                         'm_sv','pt_1','pt_2',
-                        'jpt_1','jeta_1',
-                        'bpt_1','bpt_2','met',
+                        'jpt_1',
+                        'bpt_1',
+                        'met',
                         'n_jets','n_bjets','mt_1','pt_vis','pt_tt',
                         'mjj','jdeta','m_vis',
                         'dijetpt',
+                        # add dR variable to test
+                        'dR',
                         ]
             if opt.channel == 'mt':
                 features = [
@@ -271,6 +276,7 @@ def main(opt):
     # auxiliary features for preselection
     features.extend((
             'wt', # weights
+            'wt_cp_sm', # cp weight
             'gen_match_1','gen_match_2', # split DY
             'event' # kfolding
             ))
@@ -377,8 +383,11 @@ def main(opt):
         if opt.channel == 'tt':
             class_dict = {
                 'ggh': ['GluGluToHToTauTau_M-125',
-                    'GluGluH2JetsToTauTau_M125_CPmixing_sm'],
-                'qqh': ['VBFHToTauTau_M-125'],
+                    'GluGluH2JetsToTauTau_M125_CPmixing_sm',
+                    'GluGluToHToTauTau_M-125-nospinner-filter'],
+                'qqh': ['VBFHToTauTau_M-125',
+                        'VBFHToTauTau_M-125-nospinner-filter',
+                        'VBFHToTauTau_M-125-nospinner-filter-ext'],
                 'dy': ['DYJetsToLL_M-10-50-LO',
                     'DY1JetsToLL-LO',
                     'DY2JetsToLL-LO',
@@ -569,7 +578,8 @@ def main(opt):
         # path = '/vols/cms/akd116/Offline/output/SM/2018/Aug14_2016_Danny_v3'
         # path = '/vols/cms/akd116/Offline/output/SM/2018/Feb12_2016'
         # path = '/vols/cms/dw515/Offline/output/SM/Dec05_2016/'
-        path = '/vols/cms/akd116/Offline/output/SM/2019/Feb26_2016/'
+        # path = '/vols/cms/akd116/Offline/output/SM/2019/Feb26_2016/'
+        path = '/vols/cms/akd116/Offline/output/SM/2019/CPdecay_Apr26_2/'
     elif opt.era == "2017":
         path = '/vols/cms/dw515/Offline/output/SM/Nov27_2017/'
 
@@ -635,6 +645,15 @@ def main(opt):
                     ggh_stitch_wt = (3100706. * 0.282423) / ((3100706. * 0.282423) + 14302986.)
                     # print ggh_stitch_wt
                     sig_tmp['wt_xs'] *= 1./ggh_stitch_wt
+        elif sig in [
+                "GluGluToHToTauTau_M-125-nospinner-filter",
+                "VBFHToTauTau_M-125-nospinner-filter",
+                "VBFHToTauTau_M-125-nospinner-filter-ext"
+                ]:
+            xs_tmp = params_file[sig]['xs']
+            events_tmp = params_file[sig]['evt']
+            sig_tmp['wt_xs'] = sig_tmp["wt_cp_sm"] * \
+                    sig_tmp['wt'] * (xs_tmp * lumi)/events_tmp
         else:
             xs_tmp = params_file[sig]['xs']
             events_tmp = params_file[sig]['evt']
@@ -1075,11 +1094,11 @@ def main(opt):
                 key='X_fold0',
                 mode='w')
         elif opt.apply_selection and opt.era == "2016" and opt.inc:
-            X_fold1.to_hdf('data_Feb26/dataset_fold1_{}_{}_{}.hdf5' # odd event numbers
+            X_fold1.to_hdf('data_CPdecay2016/dataset_fold1_{}_{}_{}.hdf5' # odd event numbers
                 .format(opt.analysis, opt.channel, opt.era),
                 key='X_fold1',
                 mode='w')
-            X_fold0.to_hdf('data_Feb26/dataset_fold0_{}_{}_{}.hdf5' # even event numbers
+            X_fold0.to_hdf('data_CPdecay2016/dataset_fold0_{}_{}_{}.hdf5' # even event numbers
                 .format(opt.analysis, opt.channel, opt.era),
                 key='X_fold0',
                 mode='w')

@@ -4,7 +4,7 @@ import ROOT
 ROOT.PyConfig.IgnoreCommandLineOptions = True  # disable ROOT internal argument parser
 
 import logging
-logger = logging.getLogger("annotate_file_inc.py")
+logger = logging.getLogger("annotate_file_inc_keras_others.py")
 logger.setLevel(logging.DEBUG)
 formatter = logging.Formatter("%(name)s - %(levelname)s - %(message)s")
 handler = logging.StreamHandler()
@@ -20,6 +20,8 @@ import argparse
 from sklearn.preprocessing import StandardScaler
 
 from keras.models import load_model
+import keras
+print(keras.__version__)
 
 def parse_arguments():
     parser = argparse.ArgumentParser(
@@ -97,7 +99,9 @@ def main(args, config, file_names):
     # path = "/vols/cms/akd116/Offline/output/SM/2018/Nov27_2017_copy/"
     # path = "/vols/cms/akd116/Offline/output/SM/2019/Feb26_2016/"
     # path = "/vols/cms/akd116/Offline/output/SM/2019/Feb26_2016/"
-    path = "/vols/cms/akd116/Offline/output/SM/2019/CPdecay_Apr26/"
+    # path = "/vols/cms/akd116/Offline/output/SM/2019/CPdecay_Apr26/"
+    # path = "/vols/cms/akd116/Offline/output/SM/2019/CPdecay_Apr26_2/" # FF available
+    path = "/vols/cms/akd116/Offline/output/SM/2019/Jun07_2016/"
 
     # Sanity checks
     for sample in file_names:
@@ -216,15 +220,15 @@ def main(args, config, file_names):
             args.tag), response_max_index, "{}_max_index/F".format(
                 args.tag))
 
-        # response_ggh_score = array("f", [-9999])
-        # branch_ggh_score = tree.Branch("{}_ggh_score".format(
-        #     args.tag), response_ggh_score, "{}_ggh_score/F".format(
-        #         args.tag))
+        response_ggh_score = array("f", [-9999])
+        branch_ggh_score = tree.Branch("{}_ggh_score".format(
+            args.tag), response_ggh_score, "{}_ggh_score/F".format(
+                args.tag))
 
-        # response_qqh_score = array("f", [-9999])
-        # branch_qqh_score = tree.Branch("{}_qqh_score".format(
-        #     args.tag), response_qqh_score, "{}_qqh_score/F".format(
-        #         args.tag))
+        response_qqh_score = array("f", [-9999])
+        branch_qqh_score = tree.Branch("{}_qqh_score".format(
+            args.tag), response_qqh_score, "{}_qqh_score/F".format(
+                args.tag))
 
         # Run the event loop
         for i_event in range(tree.GetEntries()):
@@ -256,25 +260,27 @@ def main(args, config, file_names):
                     jpt_2_mod = -10
                 elif getattr(tree, "n_jets") < 1:
                     jpt_1_mod = -10
-                print("yes")
 
-                print(len(values))
                 values[2] = jpt_1_mod
                 values[3] = jpt_2_mod
                 values[10] = mjj_mod
                 values[11] = jdeta_mod
                 values[13] = dijetpt_mod
-                print("yesss")
-                values = [-10. if (x == -9999. or x == -999.) else x for x in values] # maybe need this?
-                print("yesss1")
                 values_stacked = np.hstack(values).reshape(1, len(values))
-                print("yesss2")
+
+                for ind, vals in enumerate(values_stacked):
+                    values_stacked[ind] = [-10. if (x == -9999. or x == -999.) else x for x in vals] # maybe need this?
+                    values_stacked[ind] = [125. if x == -100 else x for x in vals] # forcing m_sv to 125
                 values_preprocessed = preprocessing[event % 2].transform(values_stacked)
-                print("yesss3")
                 response = classifier[event % 2].predict(values_preprocessed)
-                print("yesss4")
-                response = np.squeeze(response)
-                print(response)
+                # response = np.squeeze(response)
+
+                if i_event % 10000 == 0:
+                    logger.debug('Currently on event {}'.format(i_event))
+
+
+                if len(response.shape) == 2:
+                    response = response[0]
 
                 # Find max score and index
                 response_max_score[0] = -9999.0
@@ -283,45 +289,47 @@ def main(args, config, file_names):
                         response_max_score[0] = r
                         response_max_index[0] = i
 
-                # # Take ggH score as well
-                # response_ggh_score[0] = -9999.0
-                # # if args.channel in ['tt','em']:
-                # response_ggh_score[0] = response[0]
-                # # elif args.channel in ['mt','et']:
-                # #     response_ggh_score[0] = response[1]
+                # Take ggH score as well
+                response_ggh_score[0] = -9999.0
+                # if args.channel in ['tt','em']:
+                response_ggh_score[0] = response[0]
+                # elif args.channel in ['mt','et']:
+                #     response_ggh_score[0] = response[1]
 
-                # # Take qqH score 
-                # response_qqh_score[0] = -9999.0
-                # # if args.channel in ['tt','em']:
-                # response_qqh_score[0] = response[2]
-                # # elif args.channel in ['mt','et']:
-                # #     response_qqh_score[0] = response[1]
+                # Take qqH score 
+                response_qqh_score[0] = -9999.0
+                # if args.channel in ['tt','em']:
+                response_qqh_score[0] = response[1]
+                # elif args.channel in ['mt','et']:
+                #     response_qqh_score[0] = response[1]
+
+                del response
 
 
-                print("yes1")
                 # Fill branches
                 branch_max_score.Fill()
                 branch_max_index.Fill()
-                # branch_ggh_score.Fill()
-                # branch_qqh_score.Fill()
-                print("yes2")
+                branch_ggh_score.Fill()
+                branch_qqh_score.Fill()
 
             else:
                 response_max_score[0] = -9999.0
                 response_max_index[0] = -9999.0
-                # response_ggh_score[0] = -9999.0
-                # response_qqh_score[0] = -9999.0
+                response_ggh_score[0] = -9999.0
+                response_qqh_score[0] = -9999.0
 
                 # Fill branches
                 branch_max_score.Fill()
                 branch_max_index.Fill()
-                # branch_ggh_score.Fill()
-                # branch_qqh_score.Fill()
-        exit()
+                branch_ggh_score.Fill()
+                branch_qqh_score.Fill()
+        logger.debug("Finished looping over events")
 
         # Write everything to file
         file_.Write("ntuple",ROOT.TObject.kWriteDelete)
         file_.Close()
+
+        logger.debug("Closed file")
 
 
 if __name__ == "__main__":
