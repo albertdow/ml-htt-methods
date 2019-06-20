@@ -108,7 +108,7 @@ def main(opt):
                     .format(opt.fold, opt.analysis, opt.channel, opt.sig_sample,opt.mjj_training))
             ff.fit_keras(train_fold, opt.channel, opt.fold, opt.analysis, opt.sig_sample, opt.mjj_training)
         elif opt.inc:
-            train_fold = pd.read_hdf('data_Feb26/dataset_fold{}_{}_{}_{}.hdf5'
+            train_fold = pd.read_hdf('data_CPdecay2016/dataset_fold{}_{}_{}_{}.hdf5' # Feb26
                     .format(opt.fold, opt.analysis, opt.channel, opt.era))
             ff.fit_keras_inc(train_fold, opt.channel, opt.fold, opt.analysis, opt.sig_sample)
 
@@ -134,8 +134,14 @@ def main(opt):
                 train_fold = pd.read_hdf('data_2017/dataset_fold{}_{}_{}_{}.hdf5'
                         .format(opt.fold, opt.analysis, opt.channel, opt.era))
             if opt.era == "2016":
-                train_fold = pd.read_hdf('data_Dec05/dataset_fold{}_{}_{}_{}.hdf5'
+                # previous Feb13 model
+                # train_fold = pd.read_hdf('data_Dec05/dataset_fold{}_{}_{}_{}.hdf5'
+                #         .format(opt.fold, opt.analysis, opt.channel, opt.era))
+
+                # to use SM analysis like variables
+                train_fold = pd.read_hdf('data_CPdecay2016/dataset_fold{}_{}_{}_{}.hdf5' # Feb26
                         .format(opt.fold, opt.analysis, opt.channel, opt.era))
+
             print('train_fold used: dataset_fold{}_{}_{}_{}.hdf5'.format(opt.fold, opt.analysis, opt.channel, opt.era))
             print(train_fold.shape)
             ff.fit_multiclass_kfold_inc(train_fold, opt.fold, opt.analysis, opt.channel, opt.sig_sample, opt.era)

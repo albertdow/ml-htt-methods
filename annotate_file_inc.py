@@ -94,7 +94,10 @@ def main(args, config, file_names):
     # path = "/vols/cms/akd116/Offline/output/SM/2018/Sep01_2016_Danny/"
     # path = "/vols/cms/akd116/Offline/output/SM/2018/Sep21/"
     # path = "/vols/cms/akd116/Offline/output/SM/2018/Nov27_2017_copy/"
-    path = "/vols/cms/akd116/Offline/output/SM/2019/Feb26_2016/"
+    # path = "/vols/cms/akd116/Offline/output/SM/2019/Feb26_2016/"
+    # path = "/vols/cms/akd116/Offline/output/SM/2019/CPdecay_Apr26/"
+    # path = "/vols/cms/akd116/Offline/output/SM/2019/CPdecay_Apr26_2/"
+    path = "/vols/cms/akd116/Offline/output/SM/2019/Jun07_2016/"
 
     # Sanity checks
     for sample in file_names:
@@ -111,10 +114,10 @@ def main(args, config, file_names):
         # Load Keras models and preprocessing
 
         if args.era != "":
-            with open('{}/multi_fold1_cpsm_{}_{}_{}_xgb.pkl'
+            with open('{}/multi_fold1_sm_{}_{}_{}_xgb.pkl'
                     .format(args.model_folder, args.channel, args.training, args.era), 'r') as f:
                 xgb_clf_fold1 = pickle.load(f)
-            with open('{}/multi_fold0_cpsm_{}_{}_{}_xgb.pkl'
+            with open('{}/multi_fold0_sm_{}_{}_{}_xgb.pkl'
                     .format(args.model_folder, args.channel, args.training, args.era), 'r') as f:
                 xgb_clf_fold0 = pickle.load(f)
         elif args.training == "madgraph" or args.training == "powheg":
@@ -161,7 +164,7 @@ def main(args, config, file_names):
         # Book branches for annotation
         values = []
         for variable in config["variables"]:
-            if variable in ["dijetpt","eta_h","IC_binary_test_4_score","IC_binary_test_4_index"]:
+            if variable in ["dijetpt","eta_h","IC_binary_test_4_score","IC_binary_test_4_index","bpt_1",]:
                 values.append(array("f", [-9999]))
             if variable in ["eta_1","eta_2","jdeta","jpt_1","jpt_2","m_sv","m_vis","met","jeta_1","jeta_2","mt_tot","mt_sv",
                     "met_dphi_1","met_dphi_2","mjj","mt_1","mt_2","mt_lep","pt_1","pt_2","pt_h","pt_tt","pt_vis","pzeta","dR"]:
@@ -204,27 +207,27 @@ def main(args, config, file_names):
             # m_vis = float(getattr(tree, "m_vis"))
 
             if m_sv > 0:
-                zfeld = float(getattr(tree,"eta_h")) - (float(getattr(tree,"jeta_1"))+float(getattr(tree,"jeta_2")))/2
-                centrality = np.exp(-4*(zfeld/np.fabs(float(getattr(tree,"jdeta"))))**2)
-                dphi_custom = np.arccos(1-float(getattr(tree,"mt_lep"))**2/(2.*float(getattr(tree,"pt_1"))*float(getattr(tree,"pt_2"))))
-                dR_custom = np.sqrt((float(getattr(tree,"eta_1"))-float(getattr(tree,"eta_2")))**2 + dphi_custom**2)
+                # zfeld = float(getattr(tree,"eta_h")) - (float(getattr(tree,"jeta_1"))+float(getattr(tree,"jeta_2")))/2
+                # centrality = np.exp(-4*(zfeld/np.fabs(float(getattr(tree,"jdeta"))))**2)
+                # dphi_custom = np.arccos(1-float(getattr(tree,"mt_lep"))**2/(2.*float(getattr(tree,"pt_1"))*float(getattr(tree,"pt_2"))))
+                # dR_custom = np.sqrt((float(getattr(tree,"eta_1"))-float(getattr(tree,"eta_2")))**2 + dphi_custom**2)
 
+                # # additional_vars = [
+                # #         zfeld,centrality,mjj_jdeta,dijetpt_pth,dijetpt_jpt1,dijetpt_pth_over_pt1,
+                # #         msv_mvis,msvsq_mvis,msv_sq,log_metsq_jeta2,met_jeta2,oppsides_centrality,pthsq_ptvis,msv_rec
+                # #         ]
                 # additional_vars = [
-                #         zfeld,centrality,mjj_jdeta,dijetpt_pth,dijetpt_jpt1,dijetpt_pth_over_pt1,
-                #         msv_mvis,msvsq_mvis,msv_sq,log_metsq_jeta2,met_jeta2,oppsides_centrality,pthsq_ptvis,msv_rec
+                #         centrality,#mjj_jdeta,
+                #         #msvsq_mvis,pthsq_ptvis,
+                #         dR_custom,
                 #         ]
-                additional_vars = [
-                        centrality,#mjj_jdeta,
-                        #msvsq_mvis,pthsq_ptvis,
-                        dR_custom,
-                        ]
-                if len(values) < len(config["variables"]):
-                    values.extend(additional_vars) ## for the first loop
-                    # values.append(centrality) ## for the first loop
-                else:
-                    for index,val in enumerate(additional_vars):
-                        ind = len(additional_vars)-index
-                        values[-ind] = val
+                # if len(values) < len(config["variables"]):
+                #     values.extend(additional_vars) ## for the first loop
+                #     # values.append(centrality) ## for the first loop
+                # else:
+                #     for index,val in enumerate(additional_vars):
+                #         ind = len(additional_vars)-index
+                #         values[-ind] = val
                     # values[-1] = centrality # then replace the last value
                 values_stacked = np.hstack(values).reshape(1, len(values))
                 # values_preprocessed = preprocessing.fit_transform(
@@ -240,6 +243,8 @@ def main(args, config, file_names):
                     if r > response_max_score[0]:
                         response_max_score[0] = r
                         response_max_index[0] = i
+                if i_event % 10000 == 0:
+                    logger.debug('Currently on event {}'.format(i_event))
 
                 # rms = np.sqrt(1./3. * (response[1]**2+response[2]**2+response[3]**2))
                 # if response_max_index[0] == 0 and (response[1]>0.3 or response[2]>0.3 or response[3]>0.3):
@@ -281,10 +286,13 @@ def main(args, config, file_names):
                 # branch_ggh_score.Fill()
                 # branch_qqh_score.Fill()
 
+        logger.debug("Finished looping over events")
+
         # Write everything to file
         file_.Write("ntuple",ROOT.TObject.kWriteDelete)
         file_.Close()
 
+        logger.debug("Closed file")
 
 if __name__ == "__main__":
     args = parse_arguments()

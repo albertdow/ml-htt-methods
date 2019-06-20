@@ -1839,14 +1839,16 @@ def fit_multiclass_kfold_inc(X, fold, analysis, channel, sig_sample, era):
 
     # X["rms_pt"] = np.sqrt(0.5 * (X.pt_1**2 + X.pt_2**2))
     # X["rms_jpt"] = np.sqrt(0.5 * (X.jpt_1**2 + X.jpt_2**2))
+
     # # make zeppenfeld variable
-    X["zfeld"] = np.fabs(X.eta_h - (X.jeta_1 + X.jeta_2)/2.)
+    # X["zfeld"] = np.fabs(X.eta_h - (X.jeta_1 + X.jeta_2)/2.)
     # # print X["zfeld"]
     # # make centrality variable
-    X["centrality"] = np.exp(-4*(X.zfeld/np.fabs(X.jdeta))**2)
+    # X["centrality"] = np.exp(-4*(X.zfeld/np.fabs(X.jdeta))**2)
 
-    X["dphi_custom"] = np.arccos(1-X.mt_lep**2/(2.*X.pt_1*X.pt_2))
-    X["dR_custom"] = np.sqrt((X.eta_1-X.eta_2)**2 + (X.dphi_custom)**2)
+    # X["dphi_custom"] = np.arccos(1-X.mt_lep**2/(2.*X.pt_1*X.pt_2))
+    # X["dR_custom"] = np.sqrt((X.eta_1-X.eta_2)**2 + (X.dphi_custom)**2)
+
 
     X_train,X_test, y_train,y_test,w_train,w_test  = train_test_split(
         X,
@@ -1895,20 +1897,14 @@ def fit_multiclass_kfold_inc(X, fold, analysis, channel, sig_sample, era):
 
     print(X_train.head(5))
 
-    X_train = X_train.drop([
-        'wt','wt_xs', 'process', 'multi_class','event',
-        'gen_match_1', 'gen_match_2',
-        'zfeld','jeta_1'
-        ], axis=1).reset_index(drop=True)
+    dropVars = ["wt","wt_xs", "process", "multi_class","event","gen_match_1", "gen_match_2",]
+    if sig_sample in ["tauspinner","powheg"]:
+        dropVars.append("wt_cp_sm")
+    if channel == "em":
+        dropVars.append("wt_em_qcd")
 
-    X_test = X_test.drop([
-        'wt','wt_xs', 'process', 'multi_class','event',
-        'gen_match_1', 'gen_match_2',
-        'zfeld','jeta_1'
-        ], axis=1).reset_index(drop=True)
-
-    X_train = X_train.drop(["dphi_custom"], axis=1).reset_index(drop=True)
-    X_test = X_test.drop(["dphi_custom"], axis=1).reset_index(drop=True)
+    X_train = X_train.drop(dropVars, axis=1).reset_index(drop=True)
+    X_test = X_test.drop(dropVars, axis=1).reset_index(drop=True)
 
     # pf.plot_correlation_matrix(X_train, 'correlation_matrix.pdf')
 
@@ -2000,7 +1996,7 @@ def fit_multiclass_kfold_inc(X, fold, analysis, channel, sig_sample, era):
                 'max_depth':4,
                 # 'min_child_weight':1,
                 'learning_rate':1,
-                'silent':0.5,
+                'silent':1,
                 # 'scale_pos_weight':1,
                 'n_estimators':10000,
                 # 'gamma':0.1,
@@ -2869,12 +2865,15 @@ def fit_keras(X, channel, fold, analysis, sig_sample, mjj_training):
 def fit_keras_inc(X, channel, fold, analysis, sig_sample):
     ### TEST A KERAS MODEL
 
-
     ## START EDITING THIS FOR ODD/EVEN SPLIT
     print('Training keras model fold{}'.format(fold))
 
+    # sum_w = X_train['wt_xs'].sum()
+    # sum_w_cat = X.groupby('multi_class')['wt_xs'].sum()
+    # class_weights = sum_w / sum_w_cat
+
+    X = X[X["multi_class"] != "misc"] # don't use misc
     # X.multi_class.replace("qqh","ggh",inplace=True)
-    X = X[X["multi_class"] != "misc"]
 
     # X["zfeld"] = np.fabs(X.eta_h - (X.jeta_1 + X.jeta_2)/2.)
     # # print X["zfeld"]
@@ -2884,14 +2883,8 @@ def fit_keras_inc(X, channel, fold, analysis, sig_sample):
     # X["dphi_custom"] = np.arccos(1-X.mt_lep**2/(2.*X.pt_1*X.pt_2))
     # X["dR_custom"] = np.sqrt((X.eta_1-X.eta_2)**2 + (X.dphi_custom)**2)
 
-    sum_w = X['wt_xs'].sum()
-    sum_w_cat = X.groupby('multi_class')['wt_xs'].sum()
-    class_weights = sum_w / sum_w_cat
-
-    class_weight_dict = dict(class_weights)
-
-    print(class_weight_dict)
-
+    X.replace(-999.,-10, inplace=True)
+    X.replace(-9999.,-10, inplace=True)
 
     # split
     X_train,X_test, y_train,y_test,w_train,w_test  = train_test_split(
@@ -2902,6 +2895,19 @@ def fit_keras_inc(X, channel, fold, analysis, sig_sample):
         random_state=123456,
         stratify=X['multi_class'].values,
         )
+    print(X.head())
+    print(X_train.head())
+    print(w_train)
+
+    sum_w = X_train['wt_xs'].sum()
+    # print 'sum_w', sum_w
+    sum_w_cat = X_train.groupby('multi_class')['wt_xs'].sum()
+    # print 'sum_w_cat', sum_w_cat
+    class_weights = sum_w / sum_w_cat
+
+    class_weight_dict = dict(class_weights)
+
+    print(class_weight_dict)
 
     # multiply w_train by class_weight now
     for i in w_train.index:
@@ -2909,7 +2915,17 @@ def fit_keras_inc(X, channel, fold, analysis, sig_sample):
             if y_train[i] == key:
                 w_train.at[i] *= value
 
-    
+    # replace now to get the weights right still for the individual ones
+    # X_train["multi_class"].replace("qqh","ggh",inplace=True)
+    # X_test["multi_class"].replace("qqh","ggh",inplace=True)
+    # y_train.replace("qqh","ggh",inplace=True)
+    # y_test.replace("qqh","ggh",inplace=True)
+    min_maxscaler = MinMaxScaler()
+    fit_minmax = min_maxscaler.fit(X["wt_xs"].values.reshape(-1,1))
+
+
+    # Fit the min max scaler on training weights
+    scaled_w_train = min_maxscaler.transform(w_train.values.reshape(-1,1))
 
     ## use one-hot encoding
     # encode class values as integers
@@ -2917,28 +2933,31 @@ def fit_keras_inc(X, channel, fold, analysis, sig_sample):
     encoder.fit(y_train)
     encoded_y_train = encoder.transform(y_train)
     # convert integers to dummy variables (i.e. one hot encoded)
-    y_train = np_utils.to_categorical(encoded_y_train, num_classes=len(class_weight_dict.keys()))
-    encoder.fit(y_test)
+    y_train = np_utils.to_categorical(encoded_y_train, num_classes=len(X_train["multi_class"].unique()))
+    # encoder.fit(y_test)
+    encoder.classes_
     encoded_y_test = encoder.transform(y_test)
     # convert integers to dummy variables (i.e. one hot encoded)
-    y_test = np_utils.to_categorical(encoded_y_test, num_classes=len(class_weight_dict.keys()))
+    y_test = np_utils.to_categorical(encoded_y_test, num_classes=len(X_train["multi_class"].unique()))
     
     print('original Y: ', X_train['multi_class'].head())
     print('one-hot y: ', y_train[0])
+    print('one-hot y: ', y_train[1])
+    print('one-hot y: ', y_train[2])
 
+    print('original Y: ', X_test['multi_class'].head())
+    print('one-hot y: ', y_test[0])
+    print('one-hot y: ', y_test[1])
+    print('one-hot y: ', y_test[2])
 
-    X_train = X_train.drop([
-        'wt','wt_xs', 'process', 'multi_class','event','gen_match_1', 'gen_match_2',
-        # 'zfeld','eta_h','eta_1','eta_2'
-        ], axis=1).reset_index(drop=True)
-
-    X_test = X_test.drop([
-        'wt','wt_xs', 'process', 'multi_class','event','gen_match_1', 'gen_match_2',
-        # 'zfeld','eta_h','eta_1','eta_2'
-        ], axis=1).reset_index(drop=True)
+    dropVars = ["wt","wt_xs", "process", "multi_class","event","gen_match_1", "gen_match_2",]
+    if sig_sample == "tauspinner":
+        dropVars.append("wt_cp_sm")
     if channel == "em":
-        X_train = X_train.drop(["wt_em_qcd"], axis=1).reset_index(drop=True)
-        X_test = X_test.drop(["wt_em_qcd"], axis=1).reset_index(drop=True)
+        dropVars.append("wt_em_qcd")
+
+    X_train = X_train.drop(dropVars, axis=1).reset_index(drop=True)
+    X_test = X_test.drop(dropVars, axis=1).reset_index(drop=True)
 
     # to use names "f0" etcs
     print(X_train.columns)
@@ -2954,31 +2973,23 @@ def fit_keras_inc(X, channel, fold, analysis, sig_sample):
     with open('{}_scaler.pkl'.format(channel), 'w') as f:
         pickle.dump(scaler, f)
 
+    print(X_train)
     scaled_train = np_scaled_train
-    # scaled_train = pd.DataFrame(np_scaled_train)
+    # scaled_train = pd.DataFrame(np_scaled_train).reset_index(drop=True)
     # scaled_train.columns = columns
+    print(scaled_train)
 
     np_scaled_test = scaler.transform(X_test.values)
     scaled_test = np_scaled_test
-    # scaled_test = pd.DataFrame(np_scaled_test)
+    print(X_test)
+    # scaled_test = pd.DataFrame(np_scaled_test).reset_index(drop=True)
     # scaled_test.columns = columns
-    # X_train = X_train.drop(["wt"], axis=1).reset_index(drop=True)
-    # X_test = X_test.drop(["wt"], axis=1).reset_index(drop=True)
-
-    min_maxscaler = MinMaxScaler()
-    scaled_w_train = min_maxscaler.fit_transform(w_train.values.reshape(-1,1))
-    scaled_w_test = min_maxscaler.transform(w_test.values.reshape(-1,1))
+    print(scaled_test)
 
     ## how many features
     num_inputs = scaled_train.shape[1]
     ## how many classes
     num_outputs = y_train.shape[1]
-
-    from keras.models import Sequential
-    from keras.layers import *
-    from keras.optimizers import *
-    from keras.regularizers import l2
-    from theano.tensor import lt
 
     model = Sequential()
 
@@ -2987,18 +2998,20 @@ def fit_keras_inc(X, channel, fold, analysis, sig_sample):
             model.add(Dense(nodes, kernel_regularizer=l2(1e-5), input_dim=num_inputs))
         else:
             model.add(Dense(nodes, kernel_regularizer=l2(1e-5)))
-        model.add(Activation("relu"))
-        # model.add(Dropout(0.3))
+        model.add(Activation("tanh"))
+        model.add(Dropout(0.3))
 
     model.add(Dense(num_outputs, kernel_regularizer=l2(1e-5)))
     model.add(Activation("softmax"))
 
     model.compile(
         loss="categorical_crossentropy", 
-        optimizer=Nadam(lr=1e-4), 
-        metrics=["categorical_accuracy"]
+        optimizer=adam(lr=1e-4),
+        metrics=["accuracy"]
         )
 
+    w_train = w_train.reset_index(drop=True)
+    w_test  = w_test.reset_index(drop=True)
 
     ## add early stopping
     callbacks = []
@@ -3012,17 +3025,38 @@ def fit_keras_inc(X, channel, fold, analysis, sig_sample):
         scaled_train,
         y_train,
         # class_weight=test_class_weight,
-        sample_weight=scaled_w_train.squeeze(),
+        # sample_weight=scaled_w_train.squeeze(),
+        sample_weight=w_train,
         # validation_data=(X_test,y_test,w_test),
-        validation_data=(scaled_test,y_test,scaled_w_test.squeeze()),
-        batch_size=100,
-        epochs=10000,
+        validation_data=(scaled_test,y_test,w_test),
+        # validation_data=(scaled_test,y_test,w_test),
+        batch_size=1000,
+        epochs=100000,
         shuffle=True,
         callbacks=callbacks
         )
 
     model.save('keras_model_fold{}_{}_{}_{}.h5'
             .format(fold, analysis, channel, sig_sample))
+
+    ## Plotting things
+    y_prediction = model.predict_classes(X_test.values)
+    y_test = np.argmax(y_test, axis=1)
+
+    pf.plot_confusion_matrix(
+            y_test, y_prediction, w_test.squeeze(),
+            classes=list(encoder.classes_),
+            figname='multi_fold{}_{}_{}_{}_non-normalised_weights_cm.pdf'.format(fold, analysis, channel, sig_sample))
+    pf.plot_confusion_matrix(
+            y_test, y_prediction, w_test.squeeze(),
+            classes=list(encoder.classes_),
+            figname='multi_fold{}_{}_{}_{}_normalised_efficiency_weights_cm.pdf'.format(fold, analysis, channel, sig_sample),
+            normalise_by_col=True)
+    pf.plot_confusion_matrix(
+            y_test, y_prediction, w_test.squeeze(),
+            classes=list(encoder.classes_),
+            figname='multi_fold{}_{}_{}_{}_normalised_purity_weights_cm.pdf'.format(fold, analysis, channel, sig_sample),
+            normalise_by_row=True)
 
     return None
 
