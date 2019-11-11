@@ -6,6 +6,9 @@
 # rho ID
 # python train.py --analysis cpsm --mode rho_ttsplit --channel tt --kfold --fold 0
 
+# noise jet ID
+# python train.py --analysis cpsm --mode noisejet_ttsplit --channel tt --kfold --fold 0
+
 import random
 import uproot
 import xgboost as xgb
@@ -62,6 +65,8 @@ def parse_arguments():
         dest='inc', help='Do inclusive training?')
     parser.add_argument('--era', action='store', default='2016',
         dest='era', help='Which year?')
+    parser.add_argument('--splitByDM', action='store', default=None,
+        dest='splitByDM', help='Split by DM?')
 
     return parser.parse_args()
 
@@ -86,6 +91,12 @@ def main(opt):
                 .format(opt.fold, opt.analysis, opt.channel))
 
         ff.fit_rhottsplit(train_data, opt.channel, opt.fold)
+
+    if opt.mode == 'noisejet_ttsplit':
+        train_data = pd.read_hdf('noisejetID/binary_dataset_fold{}_{}_{}.hdf5'
+                .format(opt.fold, opt.analysis, opt.channel))
+
+        ff.fit_noisejets_ttsplit(train_data, opt.channel, opt.fold)
 
     if opt.mode == 'sklearn_sssplit':
 
@@ -138,9 +149,18 @@ def main(opt):
                 # train_fold = pd.read_hdf('data_Dec05/dataset_fold{}_{}_{}_{}.hdf5'
                 #         .format(opt.fold, opt.analysis, opt.channel, opt.era))
 
+                # PS tauspinner
+                # train_fold = pd.read_hdf('data_CPdecay2016_trainOnPS/dataset_fold{}_{}_{}_{}.hdf5'
+                #         .format(opt.fold, opt.analysis, opt.channel, opt.era))
+
+                # SM tauspinner
+                # train_fold = pd.read_hdf('data_CPdecay2016_trainOnSM/dataset_fold{}_{}_{}_{}.hdf5'
+                train_fold = pd.read_hdf('data_CPdecay2016_SM_splitByDM/dataset_fold{}_{}_{}_{}.hdf5'
+                        .format(opt.fold, opt.analysis, opt.channel, opt.era, opt.splitByDM))
+
                 # to use SM analysis like variables
-                train_fold = pd.read_hdf('data_CPdecay2016/dataset_fold{}_{}_{}_{}.hdf5' # Feb26
-                        .format(opt.fold, opt.analysis, opt.channel, opt.era))
+                # train_fold = pd.read_hdf('data_CPdecay2016/dataset_fold{}_{}_{}_{}.hdf5' # Feb26
+                #         .format(opt.fold, opt.analysis, opt.channel, opt.era))
 
             print('train_fold used: dataset_fold{}_{}_{}_{}.hdf5'.format(opt.fold, opt.analysis, opt.channel, opt.era))
             print(train_fold.shape)

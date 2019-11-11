@@ -162,21 +162,39 @@ def main(opt):
     if opt.mode in ['keras_multi', 'xgb_multi']:
         if opt.analysis == 'cpsm':
             features = [
-                'pt_1', 'pt_2', 'eta_1', 'eta_2',
+                'pt_1', 'pt_2',
                 'mt_1', 'mt_2', 'mt_lep',
-                'm_vis', 'm_sv',#'pt_tt',# 'eta_tt',
-                'eta_h','pt_tt',
-                'met','met_dphi_1', 'met_dphi_2',
+                'm_vis', 'm_sv', 'eta_h',
+                'pt_tt',
+                'met',
                 'n_jets', 'n_bjets',
                 'pt_vis',
                 'mjj','jdeta',
                 'jpt_1','jpt_2',
                 'dijetpt',
-                'jeta_1','jeta_2',
                 'mt_sv','mt_tot',
                 'dR',
-                #'IC_binary_test_4_score','IC_binary_test_4_index'
+                # just for dm splitting (HPS based)
+                'tau_decay_mode_1',
+                'tau_decay_mode_2',
                 ]
+        # if opt.analysis == 'cpsm':
+        #     features = [
+        #         'pt_1', 'pt_2', 'eta_1', 'eta_2',
+        #         'mt_1', 'mt_2', 'mt_lep',
+        #         'm_vis', 'm_sv',#'pt_tt',# 'eta_tt',
+        #         'eta_h','pt_tt',
+        #         'met','met_dphi_1', 'met_dphi_2',
+        #         'n_jets', 'n_bjets',
+        #         'pt_vis',
+        #         'mjj','jdeta',
+        #         'jpt_1','jpt_2',
+        #         'dijetpt',
+        #         'jeta_1','jeta_2',
+        #         'mt_sv','mt_tot',
+        #         'dR',
+        #         #'IC_binary_test_4_score','IC_binary_test_4_index'
+        #         ]
             # if opt.channel == "tt":
             #     features = [
             #         'pt_1', 'pt_2',
@@ -277,6 +295,7 @@ def main(opt):
     features.extend((
             'wt', # weights
             'wt_cp_sm', # cp weight
+            'wt_cp_ps', # cp weight
             'gen_match_1','gen_match_2', # split DY
             'event' # kfolding
             ))
@@ -579,7 +598,8 @@ def main(opt):
         # path = '/vols/cms/akd116/Offline/output/SM/2018/Feb12_2016'
         # path = '/vols/cms/dw515/Offline/output/SM/Dec05_2016/'
         # path = '/vols/cms/akd116/Offline/output/SM/2019/Feb26_2016/'
-        path = '/vols/cms/akd116/Offline/output/SM/2019/CPdecay_Apr26_2/'
+        # path = '/vols/cms/akd116/Offline/output/SM/2019/CPdecay_Apr26_2/'
+        path = '/vols/cms/akd116/Offline/output/SM/2019/Jun07_2016/'
     elif opt.era == "2017":
         path = '/vols/cms/dw515/Offline/output/SM/Nov27_2017/'
 
@@ -1094,11 +1114,15 @@ def main(opt):
                 key='X_fold0',
                 mode='w')
         elif opt.apply_selection and opt.era == "2016" and opt.inc:
-            X_fold1.to_hdf('data_CPdecay2016/dataset_fold1_{}_{}_{}.hdf5' # odd event numbers
+            # X_fold1.to_hdf('data_CPdecay2016/dataset_fold1_{}_{}_{}.hdf5' # odd event numbers
+            # X_fold1.to_hdf('data_CPdecay2016_trainOnSM_2/dataset_fold1_{}_{}_{}.hdf5' # odd event numbers
+            X_fold1.to_hdf('data_CPdecay2016_SM_splitByDM/dataset_fold1_{}_{}_{}.hdf5' # odd event numbers
                 .format(opt.analysis, opt.channel, opt.era),
                 key='X_fold1',
                 mode='w')
-            X_fold0.to_hdf('data_CPdecay2016/dataset_fold0_{}_{}_{}.hdf5' # even event numbers
+            # X_fold0.to_hdf('data_CPdecay2016/dataset_fold0_{}_{}_{}.hdf5' # even event numbers
+            # X_fold0.to_hdf('data_CPdecay2016_trainOnSM_2/dataset_fold0_{}_{}_{}.hdf5' # even event numbers
+            X_fold0.to_hdf('data_CPdecay2016_SM_splitByDM/dataset_fold0_{}_{}_{}.hdf5' # even event numbers
                 .format(opt.analysis, opt.channel, opt.era),
                 key='X_fold0',
                 mode='w')

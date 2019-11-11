@@ -68,26 +68,26 @@ def load_mc_ntuple(data, tree, branch, mjj_training, channel, cut_feats, apply_c
                 else:
                     assert ValueError('Channel not in ["tt", "mt", "et", "em"]')
 
-                if not embedding and not signal:
-                    if channel == 'tt': 
-                        df_b = df_b[
-                                ~((df_b['gen_match_1'] == 5) 
-                                    & (df_b['gen_match_2'] == 5))]
+                # if not embedding and not signal:
+                #     if channel == 'tt': 
+                #         df_b = df_b[
+                #                 ~((df_b['gen_match_1'] == 5) 
+                #                     & (df_b['gen_match_2'] == 5))]
 
-                    elif channel == 'mt': 
-                        df_b = df_b[
-                                ~((df_b['gen_match_1'] == 4) 
-                                    & (df_b['gen_match_2'] == 5))]
+                #     elif channel == 'mt': 
+                #         df_b = df_b[
+                #                 ~((df_b['gen_match_1'] == 4) 
+                #                     & (df_b['gen_match_2'] == 5))]
                         
-                    elif channel == 'et': 
-                        df_b = df_b[
-                                ~((df_b['gen_match_1'] == 3) 
-                                    & (df_b['gen_match_2'] == 5))]
+                #     elif channel == 'et': 
+                #         df_b = df_b[
+                #                 ~((df_b['gen_match_1'] == 3) 
+                #                     & (df_b['gen_match_2'] == 5))]
 
-                    elif channel == 'em': 
-                        df_b = df_b[
-                                ~((df_b['gen_match_1'] == 3) 
-                                    & (df_b['gen_match_2'] == 4))]
+                #     elif channel == 'em': 
+                #         df_b = df_b[
+                #                 ~((df_b['gen_match_1'] == 3) 
+                #                     & (df_b['gen_match_2'] == 4))]
 
                 if ff and not signal:
                     if channel == 'tt': 
@@ -385,6 +385,49 @@ def load_rhoID_ntuple(data, tree, branch, channel, cut_feats, apply_cuts):
     df1 = pd.concat(df1, ignore_index=True)
     df2 = pd.concat(df2, ignore_index=True)
     return df1, df2
+
+def load_noisejets_ntuple(data, tree, branch, channel, cut_feats, apply_cuts):
+    # LOAD MC NTUPLES AND APPLY BASELINE CUTS BY CHANNEL
+    # need to do something for when df too large..
+
+
+    try:
+        iterator = uproot.iterate(data, tree, branches=branch+cut_feats)
+    except IOError:
+        print 'Tree/Branches not found'
+
+    df1 = []
+    try:
+        for block in iterator:
+            df_b1 = pd.DataFrame(block)
+            df_b2 = pd.DataFrame(block)
+
+            if apply_cuts:
+                if channel == 'zmm': # only train on zmm
+                    df_b1 = df_b1[
+                            (df_b1['pt_1'] > 25)
+                            & (df_b1['iso_1'] < 0.15)
+                            & (df_b1['iso_2'] < 0.15)
+                            & (df_b1['trg_singlemuon'] == True)
+                            & ((df_b1["jpt_1"]/df_b1["pt_vis"]) > 0.5)
+                            & ((df_b1["jpt_1"]/df_b1["pt_vis"]) < 1.5)
+                            & ((df_b1["jpt_1"]) < 100)
+                            & (np.abs(df_b1["jeta_1"]) > 2.65)
+                            & (np.abs(df_b1["jeta_1"]) < 3.139)
+                            # & (df_b1["n_jets"] == 1)
+                            ]
+
+                else:
+                    assert ValueError('Channel not "zmm"')
+
+            df_b1 = df_b1.drop(cut_feats, axis=1)
+            df1.append(df_b1)
+
+    except IndexError:
+        print 'zero events in ntuple'
+
+    df1 = pd.concat(df1, ignore_index=True)
+    return df1
 
 def load_files(filelist):
 
