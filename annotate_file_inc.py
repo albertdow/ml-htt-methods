@@ -98,6 +98,7 @@ def main(args, config, file_names):
     # path = "/vols/cms/akd116/Offline/output/SM/2019/CPdecay_Apr26/"
     # path = "/vols/cms/akd116/Offline/output/SM/2019/CPdecay_Apr26_2/"
     path = "/vols/cms/akd116/Offline/output/SM/2019/Jun07_2016/"
+    # path = "/vols/cms/akd116/Offline/output/SM/2019/Jul13_2016copy/"
 
     # Sanity checks
     for sample in file_names:
@@ -114,10 +115,10 @@ def main(args, config, file_names):
         # Load Keras models and preprocessing
 
         if args.era != "":
-            with open('{}/multi_fold1_sm_{}_{}_{}_xgb.pkl'
+            with open('{}/multi_fold1_cpsm_{}_{}_{}_xgb.pkl'
                     .format(args.model_folder, args.channel, args.training, args.era), 'r') as f:
                 xgb_clf_fold1 = pickle.load(f)
-            with open('{}/multi_fold0_sm_{}_{}_{}_xgb.pkl'
+            with open('{}/multi_fold0_cpsm_{}_{}_{}_xgb.pkl'
                     .format(args.model_folder, args.channel, args.training, args.era), 'r') as f:
                 xgb_clf_fold0 = pickle.load(f)
         elif args.training == "madgraph" or args.training == "powheg":
@@ -228,7 +229,8 @@ def main(args, config, file_names):
                 #     for index,val in enumerate(additional_vars):
                 #         ind = len(additional_vars)-index
                 #         values[-ind] = val
-                    # values[-1] = centrality # then replace the last value
+                #     # values[-1] = centrality # then replace the last value
+
                 values_stacked = np.hstack(values).reshape(1, len(values))
                 # values_preprocessed = preprocessing.fit_transform(
                 #     values_stacked)

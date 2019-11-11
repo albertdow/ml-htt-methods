@@ -13,7 +13,7 @@ from sklearn.metrics import confusion_matrix
 
 
 def plot_signal_background(data1, data2, column,
-                        channel, sig_sample,
+                        channel, sig_sample="",
                         bins=100, **kwargs):
 
     ## THIS FUNCTION IS FOR PLOTTING SIGNAL VS

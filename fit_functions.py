@@ -429,6 +429,163 @@ def fit_rhottsplit(X, channel, fold):
     return None
 
 
+def fit_noisejets_ttsplit(X, channel, fold):
+
+    X_train,X_test, y_train,y_test,w_train,w_test  = train_test_split(
+            X,
+            X['class'],
+            X['wt'],
+            test_size=0.2,
+            random_state=123456,
+            stratify=X['class'].as_matrix(),
+            )
+    print(X.shape)
+
+    sum_w = X_train['wt'].sum()
+    sum_w_cat = X_train.groupby('class')['wt'].sum()
+    class_weights = sum_w / sum_w_cat
+
+    class_weight_dict = dict(class_weights)
+
+    print(class_weight_dict)
+
+    # multiply w_train by class_weight now
+    # print(X_train["multi_class"])
+    # print(w_train)
+    # for i in w_train.index:
+    #     for key, value in class_weight_dict.iteritems():
+    #         if y_train[i] == key:
+    #                 w_train.at[i] *= value
+    # print(X_train["multi_class"])
+    # print(w_train)
+
+    X_train = X_train.drop([
+        'event','wt','class',#'multi_class',
+        'dphi_jtt',
+        'jphi_1','jpt_1'
+
+        ], axis=1).reset_index(drop=True)
+
+    X_test = X_test.drop([
+        'event','wt','class',#'multi_class',
+        'dphi_jtt',
+        'jphi_1','jpt_1'
+
+        ], axis=1).reset_index(drop=True)
+
+    # orig_columns = X_train.columns
+    # X_train.columns = ["f{}".format(x) for x in np.arange(X_train.shape[1])]
+    # X_test.columns = ["f{}".format(x) for x in np.arange(X_train.shape[1])]
+    # print(orig_columns)
+    print(X_train.columns)
+
+
+    params = {
+            'objective':'binary:logistic',
+            'max_depth':4,
+            'learning_rate':0.01,
+            'silent':1,
+            'n_estimators':10000,
+            # 'subsample':0.9,
+            # 'max_delta_step':1,
+            'nthread':-1,
+            'seed':123456
+            }
+
+    xgb_clf = xgb.XGBClassifier(**params)
+
+    xgb_clf.fit(
+            X_train,
+            y_train,
+            # w_train,
+            early_stopping_rounds=20,
+            # eval_set=[(X_train, y_train, w_train), (X_test, y_test, w_test)],
+            eval_set=[(X_train, y_train), (X_test, y_test)],
+            eval_metric = 'auc',
+            verbose=True
+            )
+
+    # evals_result = xgb_clf.evals_result()
+
+    y_predict = xgb_clf.predict(X_test)
+    print(y_predict)
+    print('true label: {},{},{}'.format(y_test.values[0],y_test.values[1],y_test.values[2]))
+    print('predicted label: {},{},{}'.format(y_predict[0],y_predict[1],y_predict[2]))
+
+    print(classification_report(
+            y_test,
+            y_predict,
+            target_names=["data_genuine", "data_noise"],
+            ))
+
+
+    y_pred = xgb_clf.predict_proba(X_test)
+
+    # proba_predict_train = xgb_clf.predict_proba(X_train)[:,1]
+    # proba_predict_test = xgb_clf.predict_proba(X_test)[:,1]
+
+    ## SAVE FOR SKIP
+
+    with open('noisejetID/binary_{}_fold{}_xgb.pkl'.format(channel,fold), 'w') as f:
+        pickle.dump(xgb_clf, f)
+
+    auc = roc_auc_score(y_test, y_pred[:,1])
+    print(auc)
+    fpr, tpr, _ = roc_curve(y_test, y_pred[:,1])
+
+    pf.plot_roc_curve(
+            fpr, tpr, auc,
+            'noisejetID/{}_fold{}_roc.pdf'.format(channel, fold))
+
+    xgb_clf.save_model("noisejetID/binary_{}_fold{}_xgb.model".format(channel,fold))
+
+    y_prediction = xgb_clf.predict(X_test)
+
+    pf.plot_confusion_matrix(
+            y_test, y_prediction, w_test,
+            classes=["data_noise", "data_genuine"],
+            figname='noisejetID/binary_{}_fold{}_non-normalised_weights_cm.pdf'.format(channel,fold))
+
+    pf.plot_confusion_matrix(
+            y_test, y_prediction, w_test,
+            classes=["data_noise", "data_genuine"],
+            figname='noisejetID/binary_{}_fold{}_normalised_weights_cm.pdf'.format(channel,fold),
+            normalise_by_row=True)
+
+    # Define these so that I can use plot_output()
+    xg_train = xgb.DMatrix(
+            X_train.values,
+            label=y_train.values,
+            # missing=-9999,
+            weight=w_train.values
+            )
+    xg_test = xgb.DMatrix(
+            X_test.values,
+            label=y_test.values,
+            # missing=-9999,
+            weight=w_test.values
+            )
+    print("bla bla")
+
+    pf.plot_features(
+            xgb_clf,#.booster(),
+            'weight',
+            'noisejetID/binary_{}_fold{}_features_weight.pdf'.format(channel,fold))
+
+    pf.plot_features(
+            xgb_clf,#.booster(),
+            'gain',
+            'noisejetID/binary_{}_fold{}_features_gain.pdf'.format(channel,fold))
+
+    pf.plot_output(
+            xgb_clf,#.booster(),
+            xg_train, xg_test,
+            y_train.values, y_test.values,
+            'noisejetID/binary_{}_fold{}_output.pdf'.format(channel,fold))
+
+
+    return None
+
 def fit_sssplit(X, folds, channel, sig_sample):
     ## STRATIFIED SHUFFLE K FOLD
 
@@ -1824,11 +1981,12 @@ def fit_multiclass_kfold(X, fold, analysis, channel, sig_sample, mjj_training):
 
 
 #### NEW FUNCTION FOR INCLUSIVE TRAINING (CP IN DECAYS)
-def fit_multiclass_kfold_inc(X, fold, analysis, channel, sig_sample, era):
+def fit_multiclass_kfold_inc(X, fold, analysis, channel, sig_sample, era, splitByDM=None):
 
     ## START EDITING THIS FOR ODD/EVEN SPLIT
     print('Training XGBoost model fold{}'.format(fold))
     print(X.columns)
+    print(X["multi_class"])
     
     # X = X[X["multi_class"] != "misc"]
     if channel == "em":
@@ -1836,6 +1994,16 @@ def fit_multiclass_kfold_inc(X, fold, analysis, channel, sig_sample, era):
 
     X = X[X["multi_class"] != "misc"]
     X["multi_class"].replace("qqh","ggh",inplace=True)
+
+    # split by DM here (HPS for now)
+    if splitByDM is not None:
+        if splitByDM == 1:
+            X.eval("tau_decay_mode_1==1 and tau_decay_mode_2==1", inplace=True)
+        if splitByDM == 2:
+            X.eval("(tau_decay_mode_1==1 and tau_decay_mode_2==10) or (tau_decay_mode_1==10 and tau_decay_mode_2==1)", inplace=True)
+    X = X.drop(["tau_decay_mode_1", "tau_decay_mode_2"], axis=1).reset_index(drop=True)
+
+
 
     # X["rms_pt"] = np.sqrt(0.5 * (X.pt_1**2 + X.pt_2**2))
     # X["rms_jpt"] = np.sqrt(0.5 * (X.jpt_1**2 + X.jpt_2**2))
@@ -1884,6 +2052,12 @@ def fit_multiclass_kfold_inc(X, fold, analysis, channel, sig_sample, era):
             if y_train[i] == key:
                 w_train.at[i] *= value
 
+    # if want to replace here to check effect of reweighting by class here
+    # X_train["multi_class"].replace("qqh","ggh",inplace=True)
+    # X_test["multi_class"].replace("qqh","ggh",inplace=True)
+    # y_train = np.where(y_train=="qqh", "ggh", y_train)
+    # y_test =  np.where(y_test=="qqh", "ggh", y_test)
+
     ## use one-hot encoding
     # encode class values as integers
     encoder_train = LabelEncoder()
@@ -1900,13 +2074,14 @@ def fit_multiclass_kfold_inc(X, fold, analysis, channel, sig_sample, era):
     dropVars = ["wt","wt_xs", "process", "multi_class","event","gen_match_1", "gen_match_2",]
     if sig_sample in ["tauspinner","powheg"]:
         dropVars.append("wt_cp_sm")
+        dropVars.append("wt_cp_ps")
     if channel == "em":
         dropVars.append("wt_em_qcd")
 
     X_train = X_train.drop(dropVars, axis=1).reset_index(drop=True)
     X_test = X_test.drop(dropVars, axis=1).reset_index(drop=True)
 
-    # pf.plot_correlation_matrix(X_train, 'correlation_matrix.pdf')
+    pf.plot_correlation_matrix(X_train, 'correlation_matrix.pdf')
 
     # MI = mutual_info_classif(X_train,y_train)
     # print MI
@@ -1978,7 +2153,8 @@ def fit_multiclass_kfold_inc(X, fold, analysis, channel, sig_sample, era):
                 'objective':'multi:softprob',
                 'max_depth':4,
                 'min_child_weight':1,
-                'learning_rate':0.05,
+                # 'learning_rate':0.05,
+                'learning_rate':0.1,
                 'silent':1,
                 # 'scale_pos_weight':1,
                 'n_estimators':10000,
