@@ -1994,6 +1994,7 @@ def fit_multiclass_kfold_inc(X, fold, analysis, channel, sig_sample, era, splitB
 
     X = X[X["multi_class"] != "misc"]
     X["multi_class"].replace("qqh","ggh",inplace=True)
+    X["multi_class"].replace("ggh","higgs",inplace=True)
 
     # split by DM here (HPS for now)
     if splitByDM is not None:
@@ -2001,7 +2002,7 @@ def fit_multiclass_kfold_inc(X, fold, analysis, channel, sig_sample, era, splitB
             X.eval("tau_decay_mode_1==1 and tau_decay_mode_2==1", inplace=True)
         if splitByDM == 2:
             X.eval("(tau_decay_mode_1==1 and tau_decay_mode_2==10) or (tau_decay_mode_1==10 and tau_decay_mode_2==1)", inplace=True)
-    X = X.drop(["tau_decay_mode_1", "tau_decay_mode_2"], axis=1).reset_index(drop=True)
+    # X = X.drop(["tau_decay_mode_1", "tau_decay_mode_2"], axis=1).reset_index(drop=True)
 
 
 
@@ -2044,6 +2045,7 @@ def fit_multiclass_kfold_inc(X, fold, analysis, channel, sig_sample, era, splitB
 
     print(class_weight_dict)
 
+
     # multiply w_train by class_weight now
     # add mjj dependent weight for ggH
 
@@ -2051,6 +2053,9 @@ def fit_multiclass_kfold_inc(X, fold, analysis, channel, sig_sample, era, splitB
         for key, value in class_weight_dict.items():
             if y_train[i] == key:
                 w_train.at[i] *= value
+
+    sum_w_cat_after = X_train.groupby('multi_class')['wt_xs'].sum()
+    print(sum_w_cat_after)
 
     # if want to replace here to check effect of reweighting by class here
     # X_train["multi_class"].replace("qqh","ggh",inplace=True)

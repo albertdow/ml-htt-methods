@@ -49,7 +49,7 @@ def parse_arguments():
         help='training procedure (default train_test_split)')
     parser.add_argument('--channel', action='store', default='mt',
         help='channels to train on')
-    parser.add_argument('--sig_sample', action='store', default='powheg',
+    parser.add_argument('--sig_sample', action='store', default='tauspinner',
         help='''ggh signal sample to run on (default powheg)\n
         choose powheg for n_jets < 2 | (n_jets >= 2 & mjj < 300)\n
         choose JHU for n_jets >=2 & mjj > 300\n
@@ -62,9 +62,9 @@ def parse_arguments():
         dest='analysis', help='what analysis to make dataset for (default cpsm)')
     parser.add_argument('--use_jet_variables', action='store_true', default=False,
         dest='use_jet_variables', help='whether to use jet variables or not')
-    parser.add_argument('--embedding', action='store_true', default=False,
+    parser.add_argument('--embedding', action='store_true', default=True,
         dest='embedding', help='Use embedded samples?')
-    parser.add_argument('--ff', action='store_true', default=False,
+    parser.add_argument('--ff', action='store_true', default=True,
         dest='ff', help='Use FF method?')
     parser.add_argument('--mjj_training', action='store', default='low',
         dest='mjj_training', help='Do training for high Mjj or low Mjj events?')
@@ -95,23 +95,23 @@ def main(opt):
         # params_file = json.load(open('Params_2016_smsummer16.json'))
         params_file = json.load(open('Params_2016_cpdecays16.json'))
     elif opt.era == "2017":
-        params_file = json.load(open('Params_2017_smsummer17_v5.json'))
+        params_file = json.load(open('params_2017.json'))
     lumi = params_file['MuonEG']['lumi']
 
     # cut_features will only be used for preselection
     # and then dropped again
     if opt.channel == 'tt':
         cut_features = [
-                'mva_olddm_tight_1', 'mva_olddm_tight_2',
-                'mva_olddm_medium_1', 'mva_olddm_medium_2',
-                'mva_olddm_loose_1', 'mva_olddm_loose_2',
-                'antiele_1', 'antimu_1', 'antiele_2', 'antimu_2',
+                'deepTauVsJets_medium_1','deepTauVsJets_medium_2',
+                'deepTauVsJets_vvvloose_1','deepTauVsJets_vvvloose_2',
+                'deepTauVsEle_vvvloose_1','deepTauVsEle_vvvloose_2',
+                'deepTauVsMu_vloose_1','deepTauVsMu_vloose_2',
                 'leptonveto', 'trg_doubletau',
                 ]
         if opt.ff:
             cut_features.extend([
                 'mva_olddm_vloose_1', 'mva_olddm_vloose_2',
-                'wt_ff_1','wt_ff_2',
+                'wt_ff_1','wt_ff_2','wt_ff_dmbins_1',
                 ])
 
 
@@ -226,13 +226,12 @@ def main(opt):
                 features = [
                         'm_sv','pt_1','pt_2',
                         'jpt_1',
-                        'bpt_1',
                         'met',
-                        'n_jets','n_bjets','mt_1','pt_vis','pt_tt',
+                        'n_jets','pt_vis','pt_tt',
                         'mjj','jdeta','m_vis',
                         'dijetpt',
                         # add dR variable to test
-                        'dR',
+                        #'dR',
                         ]
             if opt.channel == 'mt':
                 features = [
@@ -601,7 +600,7 @@ def main(opt):
         # path = '/vols/cms/akd116/Offline/output/SM/2019/CPdecay_Apr26_2/'
         path = '/vols/cms/akd116/Offline/output/SM/2019/Jun07_2016/'
     elif opt.era == "2017":
-        path = '/vols/cms/dw515/Offline/output/SM/Nov27_2017/'
+        path = '/vols/cms/mhh18/Offline/output/SM/11Nov_Run2017_tautau'
 
     ggh = []
     for sig in sig_files:
@@ -670,10 +669,12 @@ def main(opt):
                 "VBFHToTauTau_M-125-nospinner-filter",
                 "VBFHToTauTau_M-125-nospinner-filter-ext"
                 ]:
+            print("test")
             xs_tmp = params_file[sig]['xs']
             events_tmp = params_file[sig]['evt']
             sig_tmp['wt_xs'] = sig_tmp["wt_cp_sm"] * \
-                    sig_tmp['wt'] * (xs_tmp * lumi)/events_tmp
+                    sig_tmp['wt'] * (xs_tmp * lumi)/events_tmp * 0.26
+            print(xs_tmp, events_tmp)
         else:
             xs_tmp = params_file[sig]['xs']
             events_tmp = params_file[sig]['evt']
@@ -695,8 +696,6 @@ def main(opt):
 
 
     ggh = pd.concat(ggh, ignore_index=True)
-    print ggh.shape
-    # ggh = ggh[ggh['wt_xs']>0]
     print ggh.shape
 
 
@@ -727,6 +726,7 @@ def main(opt):
             'DYJetsToLL-LO',
             'DYJetsToLL-LO-ext1',
             'DY1JetsToLL-LO',
+            'DY1JetsToLL-LO-ext',
             'DY2JetsToLL-LO',
             'DY2JetsToLL-LO-ext',
             'DY3JetsToLL-LO',
@@ -778,6 +778,7 @@ def main(opt):
                 'DYJetsToLL-LO',
                 'DYJetsToLL-LO-ext1',
                 'DY1JetsToLL-LO',
+                'DY1JetsToLL-LO-ext',
                 'DY2JetsToLL-LO',
                 'DY2JetsToLL-LO-ext',
                 'DY3JetsToLL-LO',
@@ -1127,11 +1128,11 @@ def main(opt):
                 key='X_fold0',
                 mode='w')
         elif opt.era == "2017":
-            X_fold1.to_hdf('data_2017/dataset_fold1_{}_{}_{}.hdf5' # odd event numbers
+            X_fold1.to_hdf('data_tauSpinner_2017/dataset_fold1_{}_{}_{}.hdf5' # odd event numbers
                 .format(opt.analysis, opt.channel, opt.era),
                 key='X_fold1',
                 mode='w')
-            X_fold0.to_hdf('data_2017/dataset_fold0_{}_{}_{}.hdf5' # even event numbers
+            X_fold0.to_hdf('data_tauSpinner_2017/dataset_fold0_{}_{}_{}.hdf5' # even event numbers
                 .format(opt.analysis, opt.channel, opt.era),
                 key='X_fold0',
                 mode='w')
