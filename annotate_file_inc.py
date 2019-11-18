@@ -86,19 +86,8 @@ def load_files(filelist):
 
 def main(args, config, file_names):
 
-    # path = "/vols/cms/akd116/Offline/output/SM/2018/Apr24_1"
-    # path = "/vols/cms/akd116/Offline/output/SM/2018/May17_2"
-    # path = "/vols/cms/akd116/Offline/output/SM/2018/Jun22_2016_Danny/"
-    # path = "/vols/cms/akd116/Offline/output/SM/2018/Aug14_2016_Danny_new/"
-    # path = "/vols/cms/akd116/Offline/output/SM/2018/Aug14_2016_Danny_v3/"
-    # path = "/vols/cms/akd116/Offline/output/SM/2018/Sep01_2016_Danny/"
-    # path = "/vols/cms/akd116/Offline/output/SM/2018/Sep21/"
-    # path = "/vols/cms/akd116/Offline/output/SM/2018/Nov27_2017_copy/"
-    # path = "/vols/cms/akd116/Offline/output/SM/2019/Feb26_2016/"
-    # path = "/vols/cms/akd116/Offline/output/SM/2019/CPdecay_Apr26/"
-    # path = "/vols/cms/akd116/Offline/output/SM/2019/CPdecay_Apr26_2/"
-    path = "/vols/cms/akd116/Offline/output/SM/2019/Jun07_2016/"
-    # path = "/vols/cms/akd116/Offline/output/SM/2019/Jul13_2016copy/"
+    # path = "/vols/cms/akd116/Offline/output/SM/2019/Jun07_2016/"
+    path = "/vols/cms/mhh18/Offline/output/SM/11Nov_Run2018_tautau/"
 
     # Sanity checks
     for sample in file_names:
@@ -115,24 +104,24 @@ def main(args, config, file_names):
         # Load Keras models and preprocessing
 
         if args.era != "":
-            with open('{}/multi_fold1_cpsm_{}_{}_{}_xgb.pkl'
+            with open('{}/multi_fold1_sm_{}_{}_{}_xgb.pkl'
                     .format(args.model_folder, args.channel, args.training, args.era), 'r') as f:
                 xgb_clf_fold1 = pickle.load(f)
-            with open('{}/multi_fold0_cpsm_{}_{}_{}_xgb.pkl'
+            with open('{}/multi_fold0_sm_{}_{}_{}_xgb.pkl'
                     .format(args.model_folder, args.channel, args.training, args.era), 'r') as f:
                 xgb_clf_fold0 = pickle.load(f)
         elif args.training == "madgraph" or args.training == "powheg":
-            with open('{}/multi_fold1_cpsm_{}_{}_{}_xgb.pkl'
+            with open('{}/multi_fold1_sm_{}_{}_{}_xgb.pkl'
                     .format(args.model_folder, args.channel, args.training, args.mjj), 'r') as f:
                 xgb_clf_fold1 = pickle.load(f)
-            with open('{}/multi_fold0_cpsm_{}_{}_{}_xgb.pkl'
+            with open('{}/multi_fold0_sm_{}_{}_{}_xgb.pkl'
                     .format(args.model_folder, args.channel, args.training, args.mjj), 'r') as f:
                 xgb_clf_fold0 = pickle.load(f)
         else:
-            with open('{}/multi_fold1_cpsm_{}_{}_xgb.pkl'
+            with open('{}/multi_fold1_sm_{}_{}_xgb.pkl'
                     .format(args.model_folder, args.channel, args.training), 'r') as f:
                 xgb_clf_fold1 = pickle.load(f)
-            with open('{}/multi_fold0_cpsm_{}_{}_xgb.pkl'
+            with open('{}/multi_fold0_sm_{}_{}_xgb.pkl'
                     .format(args.model_folder, args.channel, args.training), 'r') as f:
                 xgb_clf_fold0 = pickle.load(f)
         classifier = [xgb_clf_fold1, xgb_clf_fold0]

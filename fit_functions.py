@@ -1987,6 +1987,7 @@ def fit_multiclass_kfold_inc(X, fold, analysis, channel, sig_sample, era, splitB
     print('Training XGBoost model fold{}'.format(fold))
     print(X.columns)
     print(X["multi_class"])
+    X.dropna(inplace=True)
     
     # X = X[X["multi_class"] != "misc"]
     if channel == "em":
