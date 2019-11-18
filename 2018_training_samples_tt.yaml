@@ -1,0 +1,54 @@
+ggh: 
+    - GluGluHToTauTau_M-125
+    - GluGluToHToTauTau_M-125-nospinner-filter
+qqh: 
+    - VBFHToTauTau_M-125-ext1
+    - VBFHToTauTau_M-125-nospinner-filter
+dy: 
+    - DY1JetsToLL-LO
+    - DY2JetsToLL-LO
+    - DY3JetsToLL-LO
+    - DY4JetsToLL-LO
+    - DYJetsToLL-LO
+    - DYJetsToLL_M-10-50-LO
+qcd: 
+    - TauA
+    - TauB
+    - TauC
+    - TauD
+misc: 
+    - WJetsToLNu-LO
+    - WJetsToLNu-LO-ext
+    - W1JetsToLNu-LO
+    - W2JetsToLNu-LO
+    - W3JetsToLNu-LO
+    - W4JetsToLNu-LO
+    - EWKZ2Jets
+    - EWKWMinus2Jets
+    - EWKWPlus2Jets
+    - WWToLNuQQ
+    - WWToLNuQQ-ext
+    - WZTo2L2Q
+    - WZTo1L1Nu2Q
+    - WZTo1L3Nu
+    - WZTo3LNu
+    - ZZTo2L2Nu
+    - WWTo2L2Nu
+    - ZZTo2L2Q
+    - ZZTo4L-ext
+    - ZZTo4L
+    - T-tW
+    - T-t
+    - Tbar-tW
+    - Tbar-t
+    # w
+    - WGToLNuG
+    # tt
+    - TTTo2L2Nu
+    - TTToHadronic
+    - TTToSemiLeptonic
+    # other H->TauTau
+    - ZHToTauTau_M-125
+    - WplusHToTauTau_M-125
+    - WminusHToTauTau_M-125
+    

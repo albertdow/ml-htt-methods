@@ -141,8 +141,11 @@ def main(opt):
             ff.fit_multiclass_ttsplit(train_data, opt.analysis, opt.channel, opt.sig_sample)
 
         elif opt.inc:
+            if opt.era == "2018":
+                train_fold = pd.read_hdf('data_tauspinner_2018/dataset_fold{}_{}_{}_{}.hdf5'
+                        .format(opt.fold, opt.analysis, opt.channel, opt.era))
             if opt.era == "2017":
-                train_fold = pd.read_hdf('data_2017/dataset_fold{}_{}_{}_{}.hdf5'
+                train_fold = pd.read_hdf('data_tauspinner_2017/dataset_fold{}_{}_{}_{}.hdf5'
                         .format(opt.fold, opt.analysis, opt.channel, opt.era))
             if opt.era == "2016":
                 # previous Feb13 model
