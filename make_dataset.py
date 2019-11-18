@@ -96,6 +96,8 @@ def main(opt):
         params_file = json.load(open('Params_2016_cpdecays16.json'))
     elif opt.era == "2017":
         params_file = json.load(open('params_2017.json'))
+    elif opt.era == "2018":
+        params_file = json.load(open('params_2018.json'))
     lumi = params_file['MuonEG']['lumi']
 
     # cut_features will only be used for preselection
@@ -561,10 +563,10 @@ def main(opt):
                     }
         if opt.embedding:
             class_dict["embed"] = [
-                    "EmbeddingTauTauB","EmbeddingTauTauC","EmbeddingTauTauD","EmbeddingTauTauE","EmbeddingTauTauF","EmbeddingTauTauG","EmbeddingTauTauH",
-                    "EmbeddingMuTauB","EmbeddingMuTauC","EmbeddingMuTauD","EmbeddingMuTauE","EmbeddingMuTauF","EmbeddingMuTauG","EmbeddingMuTauH",
-                    "EmbeddingElTauB","EmbeddingElTauC","EmbeddingElTauD","EmbeddingElTauE","EmbeddingElTauF","EmbeddingElTauG","EmbeddingElTauH",
-                    "EmbeddingElMuB","EmbeddingElMuC","EmbeddingElMuD","EmbeddingElMuE","EmbeddingElMuF","EmbeddingElMuG","EmbeddingElMuH",
+                    "EmbeddingTauTauA","EmbeddingTauTauB","EmbeddingTauTauC","EmbeddingTauTauD","EmbeddingTauTauE","EmbeddingTauTauF","EmbeddingTauTauG","EmbeddingTauTauH",
+                    "EmbeddingMuTauA","EmbeddingMuTauB","EmbeddingMuTauC","EmbeddingMuTauD","EmbeddingMuTauE","EmbeddingMuTauF","EmbeddingMuTauG","EmbeddingMuTauH",
+                    "EmbeddingElTauA","EmbeddingElTauB","EmbeddingElTauC","EmbeddingElTauD","EmbeddingElTauE","EmbeddingElTauF","EmbeddingElTauG","EmbeddingElTauH",
+                    "EmbeddingElMuA","EmbeddingElMuB","EmbeddingElMuC","EmbeddingElMuD","EmbeddingElMuE","EmbeddingElMuF","EmbeddingElMuG","EmbeddingElMuH",
                     ]
         if opt.sig_sample == "madgraph":
             class_dict["ggh"] = [
@@ -575,9 +577,9 @@ def main(opt):
                     "GluGluToPseudoscalarHToTauTauPlusTwoJets_M125_amcatnloFXFX",
                     "GluGluToMaxmixHToTauTauPlusTwoJets_M125_amcatnloFXFX",
                     ]
-    elif opt.era == "2017":
+    elif opt.era in ["2017","2018"]:
         class_dict = {}
-        with open("2017_training_samples_{}.yaml".format(opt.channel), "r") as f:
+        with open("{}_training_samples_{}.yaml".format(opt.era,opt.channel), "r") as f:
             try:
                 full_class_dict = yaml.load(f)
                 for key, values in full_class_dict.iteritems():
@@ -600,7 +602,9 @@ def main(opt):
         # path = '/vols/cms/akd116/Offline/output/SM/2019/CPdecay_Apr26_2/'
         path = '/vols/cms/akd116/Offline/output/SM/2019/Jun07_2016/'
     elif opt.era == "2017":
-        path = '/vols/cms/mhh18/Offline/output/SM/11Nov_Run2017_tautau'
+        path = '/vols/cms/akd116/Offline/output/SM/2019/Nov12_2017/'
+    elif opt.era == "2018":
+        path = '/vols/cms/dw515/Offline/output/SM/CP_2018/'
 
     ggh = []
     for sig in sig_files:
@@ -1128,11 +1132,20 @@ def main(opt):
                 key='X_fold0',
                 mode='w')
         elif opt.era == "2017":
-            X_fold1.to_hdf('data_tauSpinner_2017/dataset_fold1_{}_{}_{}.hdf5' # odd event numbers
+            X_fold1.to_hdf('data_tauspinner_2017/dataset_fold1_{}_{}_{}.hdf5' # odd event numbers
                 .format(opt.analysis, opt.channel, opt.era),
                 key='X_fold1',
                 mode='w')
-            X_fold0.to_hdf('data_tauSpinner_2017/dataset_fold0_{}_{}_{}.hdf5' # even event numbers
+            X_fold0.to_hdf('data_tauspinner_2017/dataset_fold0_{}_{}_{}.hdf5' # even event numbers
+                .format(opt.analysis, opt.channel, opt.era),
+                key='X_fold0',
+                mode='w')
+        elif opt.era == "2018":
+            X_fold1.to_hdf('data_tauspinner_2018/dataset_fold1_{}_{}_{}.hdf5' # odd event numbers
+                .format(opt.analysis, opt.channel, opt.era),
+                key='X_fold1',
+                mode='w')
+            X_fold0.to_hdf('data_tauspinner_2018/dataset_fold0_{}_{}_{}.hdf5' # even event numbers
                 .format(opt.analysis, opt.channel, opt.era),
                 key='X_fold0',
                 mode='w')
