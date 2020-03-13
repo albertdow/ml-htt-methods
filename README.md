@@ -33,7 +33,7 @@ If want to use training without pT2,dijetpt variables (2016):
     
     `for era in 2016 2017 2018 ; do mkdir filelist/tmp_${era}/ && mkdir filelist/tmp_${era}/tt/; done`
 
-    `for era in 2016 2017 2018 ; do cd filelist/tmp_${era}/tt/ && split -l 1 -a 4 --numeric-suffixes ../../full_tt_2016.txt && cd ../../../; done`
+    `for era in 2016 2017 2018 ; do cd filelist/tmp_${era}/tt/ && split -l 1 -a 4 --numeric-suffixes ../../full_tt_${era}.txt && cd ../../../; done`
 
     `mkdir err && mkdir out`
 
@@ -41,9 +41,23 @@ At this stage the user ready to run:
 
 - If you want to test on one job on the batch do:
 
-    `qsub -e err/ -o out/ -cwd -V -q hep.q -t 1-1:1 batch_annotate_inc_16.sh`
+    `qsub -e err/ -o out/ -cwd -V -q hep.q -t 210-210:1 batch_annotate_inc_16.sh`
 
-- If you want to submit all years for all systematics:
+- If you want to submit all years for all systematics -- data + embedding first (long queue), 
+then MC + systematics (3 hour queue):
 
-    `for era in 16 17 18 ; do for jid in $(ls -l filelist/tmp_20${era}/tt/x* | tail -n 1 | awk '{print $9}' | tr -d -c 0-9); do qsub -e err/ -o out/ -cwd -V -q hep.q -t 1-${jid}:1 batch_annotate_inc_${era}.sh; done`
+    2016:
+
+    `qsub -e err/ -o out/ -cwd -V -l h_rt=10:0:0 -q hep.q -t 1-209:1 batch_annotate_inc_16.sh; done`
+    `for jid in $(ls -l filelist/tmp_2016/tt/x* | tail -n 1 | awk '{print $9}' | tr -d -c 0-9); do qsub -e err/ -o out/ -cwd -V -l h_rt=3:0:0 -q hep.q -t 210-${jid}:1 batch_annotate_inc_16.sh; done`
+
+    2017:
+
+    `qsub -e err/ -o out/ -cwd -V -l h_rt=10:0:0 -q hep.q -t 1-195:1 batch_annotate_inc_17.sh; done`
+    `for jid in $(ls -l filelist/tmp_2017/tt/x* | tail -n 1 | awk '{print $9}' | tr -d -c 0-9); do qsub -e err/ -o out/ -cwd -V -l h_rt=3:0:0 -q hep.q -t 196-${jid}:1 batch_annotate_inc_17.sh; done`
+
+    2018:
+
+    `qsub -e err/ -o out/ -cwd -V -l h_rt=10:0:0 -q hep.q -t 1-526:1 batch_annotate_inc_18.sh; done`
+    `for jid in $(ls -l filelist/tmp_2018/tt/x* | tail -n 1 | awk '{print $9}' | tr -d -c 0-9); do qsub -e err/ -o out/ -cwd -V -l h_rt=3:0:0 -q hep.q -t 527-${jid}:1 batch_annotate_inc_17.sh; done`
 
