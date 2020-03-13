@@ -18,7 +18,16 @@ search for path and replace with your directory where the ROOT files are stored 
 
 - Open batch_annotate_inc_16.sh, batch_annotate_inc_17.sh and batch_annotate_inc_18.sh
 and change `cd` and `source` lines to your own CMSSW repo. Also check model_folder 
-is the one you want to use, and config is the corresponding one.
+is the one you want to use, and config is the corresponding one. 
+    `--model_folder <path_to_model_folder>`
+    `--config-training <path_to_model_folder>/tt_config_<era>.yaml`
+For example if want to use training with all variables (2016 training):
+    `--model_folder data_tauspinner_12Mar2020_2016/`
+    `--config-training data_tauspinner_12Mar2020_2016/tt_config_2016.yaml`
+If want to use training without pT2,dijetpt variables (2016):
+    `--model_folder data_tauspinner_12Mar2020_2016_NopT2dijetpT/`
+    `--config-training data_tauspinner_12Mar2020_2016_NopT2dijetpT//tt_config_2016.yaml`
+    
 
 - Run following commands
     
