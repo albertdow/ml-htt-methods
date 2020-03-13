@@ -4,7 +4,7 @@ and then train on with an algorithm of choice (XGBoost, keras, sklearn etc) / or
 
 ### Git instructions
 
-git clone -b fullrun2 git@github.com:albertdow/ml-htt-methods.git
+`git clone -b fullrun2 git@github.com:albertdow/ml-htt-methods.git`
 
 ### Train
 TO DO
