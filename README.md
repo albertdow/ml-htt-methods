@@ -49,15 +49,15 @@ then MC + systematics (3 hour queue):
     2016:
 
     `qsub -e err/ -o out/ -cwd -V -l h_rt=10:0:0 -q hep.q -t 1-209:1 batch_annotate_inc_16.sh; done`
-    `for jid in $(ls -l filelist/tmp_2016/tt/x* | tail -n 1 | awk '{print $9}' | tr -d -c 0-9); do qsub -e err/ -o out/ -cwd -V -l h_rt=3:0:0 -q hep.q -t 210-${jid}:1 batch_annotate_inc_16.sh; done`
+    `qsub -e err/ -o out/ -cwd -V -l h_rt=3:0:0 -q hep.q -t 210-2665:1 batch_annotate_inc_16.sh; done`
 
     2017:
 
     `qsub -e err/ -o out/ -cwd -V -l h_rt=10:0:0 -q hep.q -t 1-195:1 batch_annotate_inc_17.sh; done`
-    `for jid in $(ls -l filelist/tmp_2017/tt/x* | tail -n 1 | awk '{print $9}' | tr -d -c 0-9); do qsub -e err/ -o out/ -cwd -V -l h_rt=3:0:0 -q hep.q -t 196-${jid}:1 batch_annotate_inc_17.sh; done`
+    `qsub -e err/ -o out/ -cwd -V -l h_rt=3:0:0 -q hep.q -t 196-2121:1 batch_annotate_inc_17.sh; done`
 
     2018:
 
     `qsub -e err/ -o out/ -cwd -V -l h_rt=10:0:0 -q hep.q -t 1-526:1 batch_annotate_inc_18.sh; done`
-    `for jid in $(ls -l filelist/tmp_2018/tt/x* | tail -n 1 | awk '{print $9}' | tr -d -c 0-9); do qsub -e err/ -o out/ -cwd -V -l h_rt=3:0:0 -q hep.q -t 527-${jid}:1 batch_annotate_inc_18.sh; done`
+    `qsub -e err/ -o out/ -cwd -V -l h_rt=3:0:0 -q hep.q -t 527-3592:1 batch_annotate_inc_18.sh; done`
 
