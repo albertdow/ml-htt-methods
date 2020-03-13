@@ -31,5 +31,5 @@ If you want to test on one job on the batch do:
 
 If you want to submit all years for all systematics:
 
-    for era in 16 17 18 ; do for jid in $(ls -trl filelist/tmp_20${era}/tt/ | tail -n 1 | awk '{print $9}' | tr -d -c 0-9); do qsub -e err/ -o out/ -cwd -V -q hep.q -t 1-${jid}:1 batch_annotate_inc_${era}.sh; done
+    for era in 16 17 18 ; do for jid in $(ls -l filelist/tmp_20${era}/tt/x* | tail -n 1 | awk '{print $9}' | tr -d -c 0-9); do qsub -e err/ -o out/ -cwd -V -q hep.q -t 1-${jid}:1 batch_annotate_inc_${era}.sh; done
 
