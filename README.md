@@ -59,5 +59,5 @@ then MC + systematics (3 hour queue):
     2018:
 
     `qsub -e err/ -o out/ -cwd -V -l h_rt=10:0:0 -q hep.q -t 1-526:1 batch_annotate_inc_18.sh; done`
-    `for jid in $(ls -l filelist/tmp_2018/tt/x* | tail -n 1 | awk '{print $9}' | tr -d -c 0-9); do qsub -e err/ -o out/ -cwd -V -l h_rt=3:0:0 -q hep.q -t 527-${jid}:1 batch_annotate_inc_17.sh; done`
+    `for jid in $(ls -l filelist/tmp_2018/tt/x* | tail -n 1 | awk '{print $9}' | tr -d -c 0-9); do qsub -e err/ -o out/ -cwd -V -l h_rt=3:0:0 -q hep.q -t 527-${jid}:1 batch_annotate_inc_18.sh; done`
 
