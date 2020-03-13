@@ -7,16 +7,12 @@ DY3JetsToLL-LO-ext
 DY4JetsToLL-LO
 DYJetsToLL-LO
 DYJetsToLL-LO-ext1
-DYJetsToLL_M-10-50-LO
 DYJetsToLL_M-10-50-LO-ext1
 EWKWMinus2Jets
 EWKWPlus2Jets
 EWKZ2Jets
 T-t
 T-tW
-TTTo2L2Nu
-TTToHadronic
-TTToSemiLeptonic
 Tbar-t
 Tbar-tW
 W1JetsToLNu-LO
@@ -28,7 +24,6 @@ WJetsToLNu-LO
 WJetsToLNu-LO-ext
 WWTo2L2Nu
 WWToLNuQQ
-WWToLNuQQ-ext
 WZTo1L1Nu2Q
 WZTo1L3Nu
 WZTo2L2Q

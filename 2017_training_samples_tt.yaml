@@ -1,10 +1,16 @@
 ggh: 
     - GluGluHToTauTau_M-125
     - GluGluHToTauTau_M-125-ext
-    - GluGluToHToTauTau_M-125-nospinner-filter
+    # - GluGluToHToTauTau_M-125-nospinner-filter
+    - GluGluHToTauTauUncorrelatedDecay_Filtered
 qqh: 
     - VBFHToTauTau_M-125
-    - VBFHToTauTau_M-125-nospinner-filter
+    # - VBFHToTauTau_M-125-nospinner-filter
+    - VBFHToTauTauUncorrelatedDecay_Filtered
+vh:
+    - WminusHToTauTauUncorrelatedDecay_Filtered
+    - WplusHToTauTauUncorrelatedDecay_Filtered
+    - ZHToTauTauUncorrelatedDecay_Filtered
 dy: 
     - DYJetsToLL-LO
     - DYJetsToLL-LO-ext1

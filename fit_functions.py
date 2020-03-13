@@ -1986,15 +1986,17 @@ def fit_multiclass_kfold_inc(X, fold, analysis, channel, sig_sample, era, splitB
     ## START EDITING THIS FOR ODD/EVEN SPLIT
     print('Training XGBoost model fold{}'.format(fold))
     print(X.columns)
-    print(X["multi_class"])
     X.dropna(inplace=True)
     
     # X = X[X["multi_class"] != "misc"]
     if channel == "em":
         X = X[X["multi_class"] != "qcd"]
+    if channel == "mt":
+        X = X[X["multi_class"] != "zll"]
 
     X = X[X["multi_class"] != "misc"]
     X["multi_class"].replace("qqh","ggh",inplace=True)
+    X["multi_class"].replace("vh","ggh",inplace=True)
     X["multi_class"].replace("ggh","higgs",inplace=True)
 
     # split by DM here (HPS for now)
@@ -2029,7 +2031,7 @@ def fit_multiclass_kfold_inc(X, fold, analysis, channel, sig_sample, era, splitB
         stratify=X['multi_class'].as_matrix(),
         )
 
-    print(X_train[(X_train.multi_class == 'ggh')].shape)
+    print(X_train[(X_train.multi_class == 'higgs')].shape)
     del X
     gc.collect()
 
@@ -2142,6 +2144,10 @@ def fit_multiclass_kfold_inc(X, fold, analysis, channel, sig_sample, era, splitB
     X_test.columns = ["f{}".format(x) for x in np.arange(X_train.shape[1])]
     print(X_train.columns)
 
+    with open('xtest_{}_{}_{}.pkl'.format(era, channel, fold), 'w') as f:
+        pickle.dump(X_test, f)
+    with open('ytest_{}_{}_{}.pkl'.format(era, channel, fold), 'w') as f:
+        pickle.dump(y_test, f)
 
     ## SOME TESTS WITH WEIGHTS
     # w_train *= (sum(w) / sum(w_train))
@@ -2176,13 +2182,14 @@ def fit_multiclass_kfold_inc(X, fold, analysis, channel, sig_sample, era, splitB
         params = {
                 'objective':'multi:softprob',
                 'max_depth':4,
-                # 'min_child_weight':1,
-                'learning_rate':1,
+                'min_child_weight':1,
+                'learning_rate':0.1,
                 'silent':1,
                 # 'scale_pos_weight':1,
                 'n_estimators':10000,
                 # 'gamma':0.1,
                 # 'reg_lambda':0.3,
+                'gamma':2,
                 'subsample':0.9,
                 'colsample_bytree':0.6,
                 # 'max_delta_step':5,

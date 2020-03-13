@@ -10,8 +10,6 @@ EWKWMinus2Jets_WToLNu
 EWKWPlus2Jets_WToLNu-ext1
 EWKWPlus2Jets_WToLNu-ext2
 EWKWPlus2Jets_WToLNu
-EWKZ2Jets_ZToLL-ext
-EWKZ2Jets_ZToLL
 T-tW
 T-t
 TT
@@ -27,10 +25,6 @@ W3JetsToLNu-LO
 W4JetsToLNu-LO-ext1
 W4JetsToLNu-LO-ext2
 W4JetsToLNu-LO
-WGToLNuG-ext
-WGToLNuG
-WGstarToLNuEE
-WGstarToLNuMuMu
 WJetsToLNu-LO-ext
 WJetsToLNu-LO
 WWTo1L1Nu2Q

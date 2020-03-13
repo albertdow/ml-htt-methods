@@ -3,6 +3,9 @@ import os
 import pandas as pd
 import numpy as np
 
+## NEED TO ADD ERA TO ADD DIFFERENT SELECTION FOR 2017/2018 (for mu tau channel especially)
+## SO WE CAN USE THIS IN THE DECAYS ANALYSIS
+
 def load_mc_ntuple(data, tree, branch, mjj_training, channel, cut_feats, apply_cuts, split_by_sample, signal, embedding, ff):
     # LOAD MC NTUPLES AND APPLY BASELINE CUTS BY CHANNEL
     # need to do something for when df too large..
@@ -20,29 +23,34 @@ def load_mc_ntuple(data, tree, branch, mjj_training, channel, cut_feats, apply_c
 
             if apply_cuts:
                 if channel == 'tt':
-                    df_b = df_b[
-                            (df_b['pt_1'] > 40)
-                            & (df_b['deepTauVsJets_medium_1']  > 0.5)
-                            & (df_b['deepTauVsJets_medium_2']  > 0.5)
-                            & (df_b['deepTauVsEle_vvvloose_1'] > 0.5)
-                            & (df_b['deepTauVsMu_vloose_1']    > 0.5)
-                            & (df_b['deepTauVsEle_vvvloose_2'] > 0.5)
-                            & (df_b['deepTauVsMu_vloose_2']    > 0.5)
-                            & (df_b['leptonveto'] == False)
-                            & (df_b['trg_doubletau'] == True)
+                    df_b = df_b.loc[df_b.eval(
+                            "pt_1 > 40 "
+                            "and deepTauVsJets_medium_1  > 0.5 "
+                            "and deepTauVsJets_medium_2  > 0.5 "
+                            "and deepTauVsEle_vvvloose_1 > 0.5 "
+                            "and deepTauVsMu_vloose_1    > 0.5 "
+                            "and deepTauVsEle_vvvloose_2 > 0.5 "
+                            "and deepTauVsMu_vloose_2    > 0.5 "
+                            "and leptonveto == False "
+                            "and trg_doubletau == True "
+                            "and mva_dm_1 != -1 "
+                            "and mva_dm_2 != -1"),:
                             ]
 
                 elif channel == 'mt':
                     df_b = df_b[
                             (df_b['iso_1'] < 0.15)
-                            & (df_b['mt_1'] < 40) # was 70 but use 40
-                            & (df_b['mva_olddm_tight_2'] > 0.5)
-                            & (df_b['antiele_2'] == True)
-                            & (df_b['antimu_2'] == True)
+                            & (df_b['mt_1'] < 50)
+                            & (df_b['deepTauVsJets_medium_2'] > 0.5)
+                            & (df_b['deepTauVsEle_vvvloose_2'] > 0.5 )
+                            & (df_b['deepTauVsMu_tight_2']     > 0.5 )
                             & (df_b['leptonveto'] == False)
                             & (df_b['pt_2'] > 20)
-                            & ((df_b['trg_singlemuon']*df_b['pt_1'] > 23)
-                                | (df_b['trg_mutaucross']*df_b['pt_1'] < 23))
+                            & (df_b['n_bjets'] == 0) # bjet veto to remove ttbar
+                            # & ((df_b['trg_singlemuon']*df_b['pt_1'] > 23)
+                            #     | (df_b['trg_mutaucross']*df_b['pt_1'] < 23))
+                            & ((df_b['trg_singlemuon']*df_b['pt_1'] > 25)
+                                | (df_b['trg_mutaucross']*df_b['pt_2'] > 29))
                             ]
 
                 elif channel == 'et':
@@ -117,7 +125,7 @@ def load_mc_ntuple(data, tree, branch, mjj_training, channel, cut_feats, apply_c
                     else:
                         assert ValueError('Mjj training not in ["low", "high"]')
 
-                df_b = df_b[(df_b['m_sv'] > 0)] ## SOME m_sv ARE MISSING
+                df_b = df_b[(df_b['svfit_mass'] > 0)] ## SOME svfit_mass ARE MISSING
 
             df_b = df_b.drop(cut_feats, axis=1)
             df.append(df_b)
@@ -128,6 +136,8 @@ def load_mc_ntuple(data, tree, branch, mjj_training, channel, cut_feats, apply_c
 
     return df
 
+## NEED TO CHANGE THE CUTS HERE BUT ONLY IF USING QCD FROM SS DATA
+## FOR FF WE USE FUNCTION BELOW
 def load_data_ntuple(data, tree, branch, mjj_training, channel, cut_feats, apply_cuts, split_by_sample):
     ## THIS FUNCTION IS FOR READING IN SAME SIGN DATA (FOR mt, et, em CHANNELS)
     ## OR ANTIISOLATED (FOR tt CHANNEL) FOR THE QCD ESTIMATION
@@ -217,7 +227,7 @@ def load_data_ntuple(data, tree, branch, mjj_training, channel, cut_feats, apply
                 else:
                     assert ValueError('Mjj training not in ["low", "high"]')
 
-            df_b = df_b[(df_b['m_sv'] > 0)] ## SOME m_sv ARE MISSING
+            df_b = df_b[(df_b['svfit_mass'] > 0)] ## SOME svfit_mass ARE MISSING
 
         df_b = df_b.drop(cut_feats, axis=1)
         df.append(df_b)
@@ -271,33 +281,37 @@ def load_ff_ntuple(data, tree, branch, mjj_training, channel, cut_feats, apply_c
                 # df_b_tt.append(df_b_2)
 
                 # new ffs with deeptau
-                df_b = df_b[
-                        (df_b['pt_1'] > 40)
-                        & ((df_b['deepTauVsJets_medium_1'] < 0.5)
-                            & (df_b['deepTauVsJets_vvvloose_1'] > 0.5)
-                            & (df_b['deepTauVsJets_medium_2'] > 0.5))
-                        & (df_b['deepTauVsEle_vvvloose_1'] > 0.5 )
-                        & (df_b['deepTauVsMu_vloose_1']    > 0.5 )
-                        & (df_b['deepTauVsEle_vvvloose_2'] > 0.5 )
-                        & (df_b['deepTauVsMu_vloose_2']    > 0.5 )
-                        & (df_b['leptonveto'] == False)
-                        & (df_b['trg_doubletau'] == True)
-                        ]
+                df_b = df_b.loc[df_b.eval(
+                        "pt_1 > 40 "
+                        "and deepTauVsJets_medium_1 < 0.5 "
+                        "and deepTauVsJets_vvvloose_1 > 0.5 "
+                        "and deepTauVsJets_medium_2 > 0.5 "
+                        "and deepTauVsEle_vvvloose_1 > 0.5 "
+                        "and deepTauVsMu_vloose_1    > 0.5 "
+                        "and deepTauVsEle_vvvloose_2 > 0.5 "
+                        "and deepTauVsMu_vloose_2    > 0.5 "
+                        "and leptonveto == False "
+                        "and trg_doubletau == True "
+                        "and mva_dm_1 != -1 "
+                        "and mva_dm_2 != -1"),:
+                        ].copy(deep=True)
 
-                df_b["wt"] = df_b["wt_ff_dmbins_1"]
+                df_b["wt"] = df_b["wt_ff_1"]
 
             elif channel == 'mt':
                 df_b = df_b[
                         (df_b['iso_1'] < 0.15)
-                        & (df_b['mt_1'] < 40)
-                        & (df_b['mva_olddm_tight_2'] < 0.5)
-                        & (df_b['mva_olddm_vloose_2'] > 0.5)
-                        & (df_b['antiele_2'] == True)
-                        & (df_b['antimu_2'] == True)
+                        & (df_b['mt_1'] < 50)
+                        & (df_b['deepTauVsJets_medium_2'] > 0.5)
+                        & (df_b['deepTauVsEle_vvvloose_2'] > 0.5 )
+                        & (df_b['deepTauVsMu_tight_2']     > 0.5 )
                         & (df_b['leptonveto'] == False)
                         & (df_b['pt_2'] > 20)
-                        & ((df_b['trg_singlemuon']*df_b['pt_1'] > 23)
-                            | (df_b['trg_mutaucross']*df_b['pt_1'] < 23))
+                        # & ((df_b['trg_singlemuon']*df_b['pt_1'] > 23)
+                        #     | (df_b['trg_mutaucross']*df_b['pt_1'] < 23))
+                        & ((df_b['trg_singlemuon']*df_b['pt_1'] > 25)
+                            | (df_b['trg_mutaucross']*df_b['pt_2'] > 29))
+                        & (df_b['n_bjets'] == 0) # bjet veto to remove ttbar
                         ]
                 df_b["wt"] = df_b["wt_ff_1"]
 
@@ -337,7 +351,7 @@ def load_ff_ntuple(data, tree, branch, mjj_training, channel, cut_feats, apply_c
                 else:
                     assert ValueError('Mjj training not in ["low", "high"]')
 
-            df_b = df_b[(df_b['m_sv'] > 0)] ## SOME m_sv ARE MISSING
+            df_b = df_b[(df_b['svfit_mass'] > 0)] ## SOME svfit_mass ARE MISSING
 
         df_b = df_b.drop(cut_feats, axis=1)
         df.append(df_b)
