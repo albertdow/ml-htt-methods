@@ -14,7 +14,7 @@ search for path and replace with your directory where the ROOT files are stored 
 
 - Open batch_annotate_inc_16.sh, batch_annotate_inc_17.sh and batch_annotate_inc_18.sh
 and change `cd` and `source` lines to your own CMSSW repo. Also check model_folder 
-is the one you want to use.
+is the one you want to use, and config is the corresponding one.
 
 - Run following commands
     
