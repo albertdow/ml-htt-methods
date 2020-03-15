@@ -10,7 +10,6 @@ variables:
     - dijetpt
     - jdeta
     - jpt_1
-    - m_sv
     - m_vis
     - met
     - mjj
@@ -19,3 +18,4 @@ variables:
     - pt_2
     - pt_tt
     - pt_vis
+    - svfit_mass
