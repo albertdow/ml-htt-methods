@@ -93,10 +93,7 @@ def load_files(filelist):
 
 def main(args, config, file_names):
 
-    # path = "/vols/cms/akd116/Offline/output/SM/2019/Jun07_2016/"
-    # path = "/vols/cms/mhh18/Offline/output/SM/11Nov_Run2017_tautau/"
-    # path = "/vols/cms/akd116/Offline/output/SM/2019/Nov21_2017_v2/"
-    path = "/vols/cms/dw515/Offline/output/SM/Jan24_2017_ttonly/"
+    path = "/vols/cms/dw515/Offline/output/SM/Mar27_2017/"
 
     # Sanity checks
     for sample_ in file_names:
@@ -174,14 +171,23 @@ def main(args, config, file_names):
             #     tree.SetBranchAddress("eta_h", values[-1])
 
         response_max_score = array("f", [-9999])
-        branch_max_score = tree.Branch("{}_max_score".format(
-            args.tag), response_max_score, "{}_max_score/F".format(
-                args.tag))
-
         response_max_index = array("f", [-9999])
-        branch_max_index = tree.Branch("{}_max_index".format(
-            args.tag), response_max_index, "{}_max_index/F".format(
-                args.tag))
+
+        if tree.GetListOfBranches().FindObject("{}_max_score".format(args.tag)):
+           branch_max_score = tree.GetBranch("{}_max_score".format(args.tag))
+           tree.SetBranchAddress("{}_max_score".format(args.tag),response_max_score)
+        else:
+          branch_max_score = tree.Branch("{}_max_score".format(
+              args.tag), response_max_score, "{}_max_score/F".format(
+                  args.tag))
+
+        if tree.GetListOfBranches().FindObject("{}_max_index".format(args.tag)):
+           branch_max_index = tree.GetBranch("{}_max_index".format(args.tag))
+           tree.SetBranchAddress("{}_max_index".format(args.tag),response_max_index)
+        else:
+          branch_max_index = tree.Branch("{}_max_index".format(
+              args.tag), response_max_index, "{}_max_index/F".format(
+                  args.tag))
  
         fileout_ = ROOT.TFile("{}/{}".format(path, sample.replace('.root','_%(nsplit)i.root'% vars())), "RECREATE")
         newtree=tree.CloneTree(0)

@@ -15,5 +15,6 @@ ulimit -c 0
 inputNumber=$SGE_TASK_ID
 
 # tt 
+export OMP_NUM_THREADS=1
 python annotate_file_split_17.py filelist/tmp_2017_split/tt/x${inputNumber} IC_15Mar2020 --model_folder ./data_tauspinner_12Mar2020_2017_NopT2dijetpT/ --training tauspinner --era 2017 --channel tt --config-training data_tauspinner_12Mar2020_2017_NopT2dijetpT/tt_2017_config_inc.yaml &> filelist/tmp_2017_split/tt/${inputNumber}.log 
 

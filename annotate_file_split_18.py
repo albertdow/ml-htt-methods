@@ -93,10 +93,7 @@ def load_files(filelist):
 
 def main(args, config, file_names):
 
-    # path = "/vols/cms/akd116/Offline/output/SM/2019/Jun07_2016/"
-    # path = "/vols/cms/mhh18/Offline/output/SM/11Nov_Run2018_tautau/"
-    # path = "/vols/cms/akd116/Offline/output/SM/2019/Nov21_2018_v2/"
-    path = "/vols/cms/dw515/Offline/output/SM/Jan24_2018_ttonly/"
+    path = "/vols/cms/dw515/Offline/output/SM/Mar27_2018/"
 
     # Sanity checks
     for sample_ in file_names:
@@ -173,15 +170,29 @@ def main(args, config, file_names):
             # else:
             #     tree.SetBranchAddress("eta_h", values[-1])
 
-        response_max_score = array("f", [-9999])
-        branch_max_score = tree.Branch("{}_max_score".format(
-            args.tag), response_max_score, "{}_max_score/F".format(
-                args.tag))
 
+########################################
+
+        response_max_score = array("f", [-9999])
         response_max_index = array("f", [-9999])
-        branch_max_index = tree.Branch("{}_max_index".format(
-            args.tag), response_max_index, "{}_max_index/F".format(
-                args.tag))
+
+        if tree.GetListOfBranches().FindObject("{}_max_score".format(args.tag)):
+           branch_max_score = tree.GetBranch("{}_max_score".format(args.tag))
+           tree.SetBranchAddress("{}_max_score".format(args.tag),response_max_score)
+        else:
+          branch_max_score = tree.Branch("{}_max_score".format(
+              args.tag), response_max_score, "{}_max_score/F".format(
+                  args.tag))
+
+        if tree.GetListOfBranches().FindObject("{}_max_index".format(args.tag)):
+           branch_max_index = tree.GetBranch("{}_max_index".format(args.tag))
+           tree.SetBranchAddress("{}_max_index".format(args.tag),response_max_index)
+        else: 
+          branch_max_index = tree.Branch("{}_max_index".format(
+              args.tag), response_max_index, "{}_max_index/F".format(
+                  args.tag))
+
+###############################
  
         fileout_ = ROOT.TFile("{}/{}".format(path, sample.replace('.root','_%(nsplit)i.root'% vars())), "RECREATE")
         newtree=tree.CloneTree(0)
@@ -203,6 +214,8 @@ def main(args, config, file_names):
             event = int(getattr(tree, "event"))
             m_sv = float(getattr(tree, "svfit_mass"))
 
+            #print m_sv
+
             if m_sv > 0:
 
                 values_stacked = np.hstack(values).reshape(1, len(values))
@@ -219,6 +232,7 @@ def main(args, config, file_names):
                 if i_event % 10000 == 0:
                     logger.debug('Currently on event {}'.format(i_event))
 
+                #print response_max_score[0]
 
                 # Fill branches
                 newtree.Fill()

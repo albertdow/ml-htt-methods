@@ -20,8 +20,15 @@ maxperjobs=300000
 with open(options.filelist) as fp: 
     for line in fp:
         l = line.strip()
-        #if not ('VBFHToTauTauUncorrelatedDecay_Filtered' in l or 'TauF' in l) or 'Embed' in l: continue # temp while we dont want to run on all files
-        if 'Higgs' in l or 'JJH0' in l: continue # temp while we dont want to run on all files
+        #if True not in [x in l for x in [
+        #  'ZHToTauTauUncorrelatedDecay_Filtered',
+        #  'WplusHToTauTauUncorrelatedDecay_Filtered',
+        #  'WminusHToTauTauUncorrelatedDecay_Filtered',
+        #  'VBFHToTauTauUncorrelatedDecay_Filtered',
+        #  'GluGluHToTauTauUncorrelatedDecay_Filtered',
+
+        #]]: continue
+
         print l
         if '.root' not in l: continue
         if os.path.isfile('%(dir)s/%(l)s'%vars()):

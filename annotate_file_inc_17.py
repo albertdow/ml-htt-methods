@@ -3,6 +3,7 @@
 import ROOT
 ROOT.PyConfig.IgnoreCommandLineOptions = True  # disable ROOT internal argument parser
 
+from sklearn.preprocessing import StandardScaler
 import logging
 logger = logging.getLogger("annotate_file_inc.py")
 logger.setLevel(logging.DEBUG)
@@ -89,7 +90,7 @@ def main(args, config, file_names):
     # path = "/vols/cms/akd116/Offline/output/SM/2019/Jun07_2016/"
     # path = "/vols/cms/mhh18/Offline/output/SM/11Nov_Run2018_tautau/"
     # path = "/vols/cms/akd116/Offline/output/SM/2019/Nov21_2017_v2/"
-    path = "/vols/cms/akd116/Offline/output/SM/2020/copy_2017/Jan24_2017_ttonly/"
+    path = "/vols/cms/dw515/Offline/output/SM/Jan24_2017_ttonly/"
 
     # Sanity checks
     for sample in file_names:
