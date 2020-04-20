@@ -234,7 +234,8 @@ def main(opt):
                 features = [
                         # 'm_sv',
                         'svfit_mass',
-                        'pt_1',#'pt_2',
+                        'pt_1',
+                        #'pt_2',
                         'jpt_1',
                         'met',
                         'n_jets','pt_vis','pt_tt',
@@ -313,286 +314,12 @@ def main(opt):
             'wt', # weights
             'wt_cp_sm', # cp weight
             'wt_cp_ps', # cp weight
+            'wt_ph_nnlops', # nnlops weight
             'gen_match_1','gen_match_2', # split DY
-            'event' # kfolding
+            'event', # kfolding
             ))
 
 
-    # if opt.era == "2016":
-    #     if opt.mjj_training == 'low' and opt.channel in ['et','mt']:
-    #         class_dict = {
-    #             'ggh': ['GluGluToHToTauTau_M-125',
-    #                 'GluGluH2JetsToTauTau_M125_CPmixing_sm'],
-    #             'qqh': ['VBFHToTauTau_M-125'],
-    #             'dy': ['DYJetsToLL_M-10-50-LO',
-    #                 'DY1JetsToLL-LO',
-    #                 'DY2JetsToLL-LO',
-    #                 'DY3JetsToLL-LO',
-    #                 'DY4JetsToLL-LO',
-    #                 'DYJetsToLL-LO-ext1',
-    #                 'DYJetsToLL-LO-ext2'],
-    #             'fake': ['W1JetsToLNu-LO',
-    #                 'W2JetsToLNu-LO-ext',
-    #                 'W2JetsToLNu-LO',
-    #                 'W3JetsToLNu-LO-ext',
-    #                 'W3JetsToLNu-LO',
-    #                 'W4JetsToLNu-LO-ext1',
-    #                 'W4JetsToLNu-LO-ext2',
-    #                 'W4JetsToLNu-LO',
-    #                 'WJetsToLNu-LO-ext',
-    #                 'WJetsToLNu-LO',
-    #                 'SingleMuonB','SingleMuonC',
-    #                 'SingleMuonD','SingleMuonE',
-    #                 'SingleMuonF','SingleMuonG',
-    #                 'SingleMuonHv2','SingleMuonHv3',
-    #                 'SingleElectronB','SingleElectronC',
-    #                 'SingleElectronD','SingleElectronE',
-    #                 'SingleElectronF','SingleElectronG',
-    #                 'SingleElectronHv2','SingleElectronHv3',],
-    #             'tt': ['TT'],
-    #             'misc': ['EWKWMinus2Jets_WToLNu-ext1','EWKWMinus2Jets_WToLNu-ext2',
-    #                 'EWKWMinus2Jets_WToLNu','EWKWPlus2Jets_WToLNu-ext1',
-    #                 'EWKWPlus2Jets_WToLNu-ext2','EWKWPlus2Jets_WToLNu',
-    #                 'EWKZ2Jets_ZToLL-ext','EWKZ2Jets_ZToLL',
-    #                 'WWTo1L1Nu2Q','WZJToLLLNu',
-    #                 'WZTo1L1Nu2Q','WZTo1L3Nu',
-    #                 'VVTo2L2Nu-ext1','VVTo2L2Nu',
-    #                 'WZTo2L2Q','ZZTo2L2Q','ZZTo4L-amcat',
-    #                 'GluGluHToWWTo2L2Nu_M-125','ZHToTauTau_M-125',
-    #                 'T-tW','T-t','Tbar-tW','Tbar-t',
-    #                 'WminusHToTauTau_M-125','WplusHToTauTau_M-125',
-    #                 'WGToLNuG-ext',
-    #                 'WGToLNuG',
-    #                 'WGstarToLNuEE',
-    #                 'WGstarToLNuMuMu',
-    #                 'VBFHToWWTo2L2Nu_M-125',
-    #                 ],
-    #             }
-
-    #     if opt.mjj_training == 'low' and opt.channel in ['em']:
-    #         class_dict = {
-    #             'ggh': ['GluGluToHToTauTau_M-125',
-    #                 'GluGluH2JetsToTauTau_M125_CPmixing_sm'],
-    #             'qqh': ['VBFHToTauTau_M-125'],
-    #             'dy': ['DYJetsToLL_M-10-50-LO',
-    #                 'DY1JetsToLL-LO',
-    #                 'DY2JetsToLL-LO',
-    #                 'DY3JetsToLL-LO',
-    #                 'DY4JetsToLL-LO',
-    #                 'DYJetsToLL-LO-ext1',
-    #                 'DYJetsToLL-LO-ext2'],
-    #             'qcd': ['MuonEGB','MuonEGC',
-    #                 'MuonEGD','MuonEGE',
-    #                 'MuonEGF','MuonEGG',
-    #                 'MuonEGHv2','MuonEGHv3'],
-    #             'tt': ['TT'],
-    #             'misc': ['EWKWMinus2Jets_WToLNu-ext1','EWKWMinus2Jets_WToLNu-ext2',
-    #                 'EWKWMinus2Jets_WToLNu','EWKWPlus2Jets_WToLNu-ext1',
-    #                 'EWKWPlus2Jets_WToLNu-ext2','EWKWPlus2Jets_WToLNu',
-    #                 'EWKZ2Jets_ZToLL-ext','EWKZ2Jets_ZToLL',
-    #                 'WWTo1L1Nu2Q','WZJToLLLNu',
-    #                 'WZTo1L1Nu2Q','WZTo1L3Nu',
-    #                 'VVTo2L2Nu-ext1','VVTo2L2Nu',
-    #                 'WZTo2L2Q','ZZTo2L2Q','ZZTo4L-amcat',
-    #                 'GluGluHToWWTo2L2Nu_M-125','ZHToTauTau_M-125',
-    #                 'T-tW','T-t','Tbar-tW','Tbar-t',
-    #                 'WminusHToTauTau_M-125','WplusHToTauTau_M-125',
-    #                 'WGToLNuG-ext',
-    #                 'WGToLNuG',
-    #                 'WGstarToLNuEE',
-    #                 'WGstarToLNuMuMu',
-    #                 'VBFHToWWTo2L2Nu_M-125',
-    #                 # w
-    #                 'W1JetsToLNu-LO',
-    #                 'W2JetsToLNu-LO-ext',
-    #                 'W2JetsToLNu-LO',
-    #                 'W3JetsToLNu-LO-ext',
-    #                 'W3JetsToLNu-LO',
-    #                 'W4JetsToLNu-LO-ext1',
-    #                 'W4JetsToLNu-LO-ext2',
-    #                 'W4JetsToLNu-LO',
-    #                 'WJetsToLNu-LO-ext',
-    #                 'WJetsToLNu-LO',
-    #                 ]
-    #             }
-
-    #     if opt.channel == 'tt':
-    #         class_dict = {
-    #             'ggh': ['GluGluToHToTauTau_M-125',
-    #                 'GluGluH2JetsToTauTau_M125_CPmixing_sm',
-    #                 'GluGluToHToTauTau_M-125-nospinner-filter'],
-    #             'qqh': ['VBFHToTauTau_M-125',
-    #                     'VBFHToTauTau_M-125-nospinner-filter',
-    #                     'VBFHToTauTau_M-125-nospinner-filter-ext'],
-    #             'dy': ['DYJetsToLL_M-10-50-LO',
-    #                 'DY1JetsToLL-LO',
-    #                 'DY2JetsToLL-LO',
-    #                 'DY3JetsToLL-LO',
-    #                 'DY4JetsToLL-LO',
-    #                 'DYJetsToLL-LO-ext1',
-    #                 'DYJetsToLL-LO-ext2'],
-    #             'qcd': ['TauB','TauC',
-    #                 'TauD','TauE',
-    #                 'TauF','TauG',
-    #                 'TauHv2','TauHv3',
-    #                 'SingleMuonB','SingleMuonC',
-    #                 'SingleMuonD','SingleMuonE',
-    #                 'SingleMuonF','SingleMuonG',
-    #                 'SingleMuonHv2','SingleMuonHv3',
-    #                 'SingleElectronB','SingleElectronC',
-    #                 'SingleElectronD','SingleElectronE',
-    #                 'SingleElectronF','SingleElectronG',
-    #                 'SingleElectronHv2','SingleElectronHv3',
-    #                 'MuonEGB','MuonEGC',
-    #                 'MuonEGD','MuonEGE',
-    #                 'MuonEGF','MuonEGG',
-    #                 'MuonEGHv2','MuonEGHv3'],
-    #             'misc': ['EWKWMinus2Jets_WToLNu-ext1','EWKWMinus2Jets_WToLNu-ext2',
-    #                 'EWKWMinus2Jets_WToLNu','EWKWPlus2Jets_WToLNu-ext1',
-    #                 'EWKWPlus2Jets_WToLNu-ext2','EWKWPlus2Jets_WToLNu',
-    #                 'EWKZ2Jets_ZToLL-ext','EWKZ2Jets_ZToLL',
-    #                 'WWTo1L1Nu2Q','WZJToLLLNu',
-    #                 'WZTo1L1Nu2Q','WZTo1L3Nu',
-    #                 'VVTo2L2Nu-ext1','VVTo2L2Nu',
-    #                 'WZTo2L2Q','ZZTo2L2Q','ZZTo4L-amcat',
-    #                 'ZHToTauTau_M-125',
-    #                 'T-tW','T-t','Tbar-tW','Tbar-t',
-    #                 # w
-    #                 'W1JetsToLNu-LO','W2JetsToLNu-LO-ext','W2JetsToLNu-LO',
-    #                 'W3JetsToLNu-LO-ext','W3JetsToLNu-LO','W4JetsToLNu-LO-ext1',
-    #                 'W4JetsToLNu-LO-ext2','W4JetsToLNu-LO','WGToLNuG-ext',
-    #                 'WGToLNuG','WGstarToLNuEE','WGstarToLNuMuMu',
-    #                 'WJetsToLNu-LO-ext','WJetsToLNu-LO','WminusHToTauTau_M-125',
-    #                 'WplusHToTauTau_M-125',
-    #                 # tt
-    #                 'TT',
-    #                 ]
-    #             }
-
-    #     if opt.mjj_training == 'high':
-    #         if opt.channel in ['mt','et']:
-    #             class_dict = {
-    #                 'ggh': ['GluGluToHToTauTau_M-125',
-    #                     'GluGluH2JetsToTauTau_M125_CPmixing_sm'],
-    #                 'qqh': ['VBFHToTauTau_M-125'],
-    #                 'dy': ['DYJetsToLL_M-10-50-LO',
-    #                     'DY1JetsToLL-LO',
-    #                     'DY2JetsToLL-LO',
-    #                     'DY3JetsToLL-LO',
-    #                     'DY4JetsToLL-LO',
-    #                     'DYJetsToLL-LO-ext1',
-    #                     'DYJetsToLL-LO-ext2'],
-
-    #                 'fake': ['TauB','TauC',
-    #                     'TauD','TauE',
-    #                     'TauF','TauG',
-    #                     'TauHv2','TauHv3',
-    #                     'SingleMuonB','SingleMuonC',
-    #                     'SingleMuonD','SingleMuonE',
-    #                     'SingleMuonF','SingleMuonG',
-    #                     'SingleMuonHv2','SingleMuonHv3',
-    #                     'SingleElectronB','SingleElectronC',
-    #                     'SingleElectronD','SingleElectronE',
-    #                     'SingleElectronF','SingleElectronG',
-    #                     'SingleElectronHv2','SingleElectronHv3',
-    #                     'MuonEGB','MuonEGC',
-    #                     'MuonEGD','MuonEGE',
-    #                     'MuonEGF','MuonEGG',
-    #                     'MuonEGHv2','MuonEGHv3',
-    #                     'W1JetsToLNu-LO',
-    #                     'W2JetsToLNu-LO-ext',
-    #                     'W2JetsToLNu-LO',
-    #                     'W3JetsToLNu-LO-ext',
-    #                     'W3JetsToLNu-LO',
-    #                     'W4JetsToLNu-LO-ext1',
-    #                     'W4JetsToLNu-LO-ext2',
-    #                     'W4JetsToLNu-LO',
-    #                     'WJetsToLNu-LO-ext',
-    #                     'WJetsToLNu-LO',
-    #                     ],
-    #                 'misc': ['EWKWMinus2Jets_WToLNu-ext1','EWKWMinus2Jets_WToLNu-ext2',
-    #                     'EWKWMinus2Jets_WToLNu','EWKWPlus2Jets_WToLNu-ext1',
-    #                     'EWKWPlus2Jets_WToLNu-ext2','EWKWPlus2Jets_WToLNu',
-    #                     'EWKZ2Jets_ZToLL-ext','EWKZ2Jets_ZToLL',
-    #                     'WWTo1L1Nu2Q','WZJToLLLNu',
-    #                     'WZTo1L1Nu2Q','WZTo1L3Nu',
-    #                     'VVTo2L2Nu-ext1','VVTo2L2Nu',
-    #                     'WZTo2L2Q','ZZTo2L2Q','ZZTo4L-amcat',
-    #                     'GluGluHToWWTo2L2Nu_M-125','ZHToTauTau_M-125',
-    #                     'T-tW','T-t','Tbar-tW','Tbar-t',
-    #                     'WminusHToTauTau_M-125','WplusHToTauTau_M-125',
-    #                     'WGToLNuG-ext',
-    #                     'WGToLNuG',
-    #                     'WGstarToLNuEE',
-    #                     'WGstarToLNuMuMu',
-    #                     # vbf bkg
-    #                     'VBFHToWWTo2L2Nu_M-125',
-    #                     ],
-    #                 }
-    #         if opt.channel in ['em']:
-    #             class_dict = {
-    #                 'ggh': ['GluGluToHToTauTau_M-125',
-    #                     'GluGluH2JetsToTauTau_M125_CPmixing_sm'],
-    #                 'qqh': ['VBFHToTauTau_M-125'],
-    #                 'dy': ['DYJetsToLL_M-10-50-LO',
-    #                     'DY1JetsToLL-LO',
-    #                     'DY2JetsToLL-LO',
-    #                     'DY3JetsToLL-LO',
-    #                     'DY4JetsToLL-LO',
-    #                     'DYJetsToLL-LO-ext1',
-    #                     'DYJetsToLL-LO-ext2'],
-    #                 'tt': ['TT'],
-    #                 'qcd': [
-    #                     'MuonEGB','MuonEGC',
-    #                     'MuonEGD','MuonEGE',
-    #                     'MuonEGF','MuonEGG',
-    #                     'MuonEGHv2','MuonEGHv3'],
-    #                 'misc': ['EWKWMinus2Jets_WToLNu-ext1','EWKWMinus2Jets_WToLNu-ext2',
-    #                     'EWKWMinus2Jets_WToLNu','EWKWPlus2Jets_WToLNu-ext1',
-    #                     'EWKWPlus2Jets_WToLNu-ext2','EWKWPlus2Jets_WToLNu',
-    #                     'EWKZ2Jets_ZToLL-ext','EWKZ2Jets_ZToLL',
-    #                     'WWTo1L1Nu2Q','WZJToLLLNu',
-    #                     'WZTo1L1Nu2Q','WZTo1L3Nu',
-    #                     'T-tW','T-t','Tbar-tW','Tbar-t',
-    #                     'VVTo2L2Nu-ext1','VVTo2L2Nu',
-    #                     'WZTo2L2Q','ZZTo2L2Q','ZZTo4L-amcat',
-    #                     'GluGluHToWWTo2L2Nu_M-125','ZHToTauTau_M-125',
-    #                     'WminusHToTauTau_M-125','WplusHToTauTau_M-125',
-    #                     'WGToLNuG-ext',
-    #                     'WGToLNuG',
-    #                     'WGstarToLNuEE',
-    #                     'WGstarToLNuMuMu',
-    #                     # w
-    #                     'W1JetsToLNu-LO',
-    #                     'W2JetsToLNu-LO-ext',
-    #                     'W2JetsToLNu-LO',
-    #                     'W3JetsToLNu-LO-ext',
-    #                     'W3JetsToLNu-LO',
-    #                     'W4JetsToLNu-LO-ext1',
-    #                     'W4JetsToLNu-LO-ext2',
-    #                     'W4JetsToLNu-LO',
-    #                     'WJetsToLNu-LO-ext',
-    #                     'WJetsToLNu-LO',
-    #                     # vbf bkg
-    #                     'VBFHToWWTo2L2Nu_M-125',
-    #                     ],
-    #                 }
-    #     if opt.embedding:
-    #         class_dict["embed"] = [
-    #                 "EmbeddingTauTauA","EmbeddingTauTauB","EmbeddingTauTauC","EmbeddingTauTauD","EmbeddingTauTauE","EmbeddingTauTauF","EmbeddingTauTauG","EmbeddingTauTauH",
-    #                 "EmbeddingMuTauA","EmbeddingMuTauB","EmbeddingMuTauC","EmbeddingMuTauD","EmbeddingMuTauE","EmbeddingMuTauF","EmbeddingMuTauG","EmbeddingMuTauH",
-    #                 "EmbeddingElTauA","EmbeddingElTauB","EmbeddingElTauC","EmbeddingElTauD","EmbeddingElTauE","EmbeddingElTauF","EmbeddingElTauG","EmbeddingElTauH",
-    #                 "EmbeddingElMuA","EmbeddingElMuB","EmbeddingElMuC","EmbeddingElMuD","EmbeddingElMuE","EmbeddingElMuF","EmbeddingElMuG","EmbeddingElMuH",
-    #                 ]
-    #     if opt.sig_sample == "madgraph":
-    #         class_dict["ggh"] = [
-    #                 "GluGluToHToTauTau_M125_amcatnloFXFX",
-    #                 "GluGluToPseudoscalarHToTauTau_M125_amcatnloFXFX",
-    #                 "GluGluToMaxmixHToTauTau_M125_amcatnloFXFX",
-    #                 "GluGluToHToTauTauPlusTwoJets_M125_amcatnloFXFX",
-    #                 "GluGluToPseudoscalarHToTauTauPlusTwoJets_M125_amcatnloFXFX",
-    #                 "GluGluToMaxmixHToTauTauPlusTwoJets_M125_amcatnloFXFX",
-    #                 ]
     if opt.era in ["2016","2017","2018"]:
         class_dict = {}
         with open("{}_training_samples_{}.yaml".format(opt.era,opt.channel), "r") as f:
@@ -617,12 +344,15 @@ def main(opt):
         # path = '/vols/cms/akd116/Offline/output/SM/2019/Feb26_2016/'
         # path = '/vols/cms/akd116/Offline/output/SM/2019/CPdecay_Apr26_2/'
         # path = '/vols/cms/akd116/Offline/output/SM/2019/Jun07_2016/'
-        path = '/vols/cms/dw515/Offline/output/SM/Jan24_2016_ttonly/'
+        # path = '/vols/cms/dw515/Offline/output/SM/Jan24_2016_ttonly/'
+        path = '/vols/cms/dw515/Offline/output/SM/Mar27_2016/'
     elif opt.era == "2017":
         # path = '/vols/cms/akd116/Offline/output/SM/2019/Nov21_2017_v2/'
-        path = '/vols/cms/dw515/Offline/output/SM/Jan24_2017_ttonly/'
+        # path = '/vols/cms/dw515/Offline/output/SM/Jan24_2017_ttonly/'
+        path = '/vols/cms/dw515/Offline/output/SM/Mar27_2017/'
     elif opt.era == "2018":
-        path = '/vols/cms/dw515/Offline/output/SM/Jan24_2018_ttonly/'
+        # path = '/vols/cms/dw515/Offline/output/SM/Jan24_2018_ttonly/'
+        path = '/vols/cms/dw515/Offline/output/SM/Mar27_2018/'
 
     ggh = []
     for sig in sig_files:
@@ -702,6 +432,11 @@ def main(opt):
             filter_eff_tmp = params_file[sig]['eff']
             sig_tmp['wt_xs'] = sig_tmp["wt_cp_sm"] * \
                     sig_tmp['wt'] * (xs_tmp * lumi)/events_tmp * filter_eff_tmp
+            print(xs_tmp, events_tmp)
+            if "GluGlu" in sig:
+                print("Multiplying by ggH NNLOPS weight")
+                print(sig_tmp["wt_ph_nnlops"])
+                sig_tmp["wt_xs"] *= sig_tmp["wt_ph_nnlops"]
             print(xs_tmp, events_tmp)
         else:
             xs_tmp = params_file[sig]['xs']
@@ -1128,54 +863,13 @@ def main(opt):
         # get odd event numbers
         X_fold1 = X[(X['event'] % 2 == 1)]#.drop(['event'], axis=1)
 
-        # if opt.apply_selection and opt.era == "2016" and not opt.inc:
-        #     X_fold1.to_hdf('data_Dec05/dataset_fold1_{}_{}_{}_{}.hdf5' # odd event numbers
-        #         .format(opt.analysis, opt.channel, opt.sig_sample, opt.mjj_training),
-        #         key='X_fold1',
-        #         mode='w')
-        #     X_fold0.to_hdf('data_Dec05/dataset_fold0_{}_{}_{}_{}.hdf5' # even event numbers
-        #         .format(opt.analysis, opt.channel, opt.sig_sample, opt.mjj_training),
-        #         key='X_fold0',
-        #         mode='w')
-        # elif opt.apply_selection and opt.era == "2016" and opt.inc:
-        #     # X_fold1.to_hdf('data_CPdecay2016/dataset_fold1_{}_{}_{}.hdf5' # odd event numbers
-        #     # X_fold1.to_hdf('data_CPdecay2016_trainOnSM_2/dataset_fold1_{}_{}_{}.hdf5' # odd event numbers
-        #     X_fold1.to_hdf('data_CPdecay2016_SM_splitByDM/dataset_fold1_{}_{}_{}.hdf5' # odd event numbers
-        #         .format(opt.analysis, opt.channel, opt.era),
-        #         key='X_fold1',
-        #         mode='w')
-        #     # X_fold0.to_hdf('data_CPdecay2016/dataset_fold0_{}_{}_{}.hdf5' # even event numbers
-        #     # X_fold0.to_hdf('data_CPdecay2016_trainOnSM_2/dataset_fold0_{}_{}_{}.hdf5' # even event numbers
-        #     X_fold0.to_hdf('data_CPdecay2016_SM_splitByDM/dataset_fold0_{}_{}_{}.hdf5' # even event numbers
-        #         .format(opt.analysis, opt.channel, opt.era),
-        #         key='X_fold0',
-        #         mode='w')
-        # elif opt.era == "2017":
-        #     X_fold1.to_hdf('data_tauspinner_2017/dataset_fold1_{}_{}_{}.hdf5' # odd event numbers
-        #         .format(opt.analysis, opt.channel, opt.era),
-        #         key='X_fold1',
-        #         mode='w')
-        #     X_fold0.to_hdf('data_tauspinner_2017/dataset_fold0_{}_{}_{}.hdf5' # even event numbers
-        #         .format(opt.analysis, opt.channel, opt.era),
-        #         key='X_fold0',
-        #         mode='w')
-        # elif opt.era == "2018":
-        #     X_fold1.to_hdf('data_tauspinner_2018/dataset_fold1_{}_{}_{}.hdf5' # odd event numbers
-        #         .format(opt.analysis, opt.channel, opt.era),
-        #         key='X_fold1',
-        #         mode='w')
-        #     X_fold0.to_hdf('data_tauspinner_2018/dataset_fold0_{}_{}_{}.hdf5' # even event numbers
-        #         .format(opt.analysis, opt.channel, opt.era),
-        #         key='X_fold0',
-        #         mode='w')
-
-        X_fold1.to_hdf('data_tauspinner_12Mar2020_{}_NopT2dijetpT/dataset_fold1_{}_{}_{}.hdf5' # odd event numbers
-        # X_fold1.to_hdf('test{}/dataset_fold1_{}_{}_{}.hdf5' # odd event numbers
+        # X_fold1.to_hdf('data_tauspinner_12Mar2020_{}_NopT2dijetpT/dataset_fold1_{}_{}_{}.hdf5' # odd event numbers
+        X_fold1.to_hdf('data_tauspinner_08Apr2020_{}/dataset_fold1_{}_{}_{}.hdf5' # odd event numbers
             .format(opt.era, opt.analysis, opt.channel, opt.era),
             key='X_fold1',
             mode='w')
-        X_fold0.to_hdf('data_tauspinner_12Mar2020_{}_NopT2dijetpT/dataset_fold0_{}_{}_{}.hdf5' # even event numbers
-        # X_fold0.to_hdf('test{}/dataset_fold0_{}_{}_{}.hdf5' # even event numbers
+        # X_fold0.to_hdf('data_tauspinner_12Mar2020_{}_NopT2dijetpT/dataset_fold0_{}_{}_{}.hdf5' # even event numbers
+        X_fold0.to_hdf('data_tauspinner_08Apr2020_{}/dataset_fold0_{}_{}_{}.hdf5' # even event numbers
             .format(opt.era, opt.analysis, opt.channel, opt.era),
             key='X_fold0',
             mode='w')
