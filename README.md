@@ -64,3 +64,26 @@ then MC + systematics (3 hour queue):
 
     `qsub -e err/ -o out/ -cwd -V -l h_rt=3:0:0 -q hep.q -t 527-3592:1 batch_annotate_inc_18.sh; done`
 
+to split large jobs up more
+
+- Run following commands (not this example is only for 2017 running only tauF and the filtered VBF signal samples)
+
+    `for era in 2016 2017 2018 ; do mkdir filelist/tmp_${era}_split/ && mkdir filelist/tmp_${era}_split/tt/; done`
+
+    `for era in 2016 2017 2018 ; do cd filelist/tmp_${era}_split/tt/ && python ../../../geteratejobs.py --filelist=../../full_tt_${era}.txt --dir=/vols/cms/dw515/Offline/output/SM/Jan24_${era}_ttonly/ && cd ../../../; done`
+
+    2016:
+
+    `qsub -e err/ -o out/ -cwd -V -l h_rt=3:0:0 -q hep.q -t 1-3001:1 batch_annotate_split_16.sh`
+
+    2017:
+
+
+    `qsub -e err/ -o out/ -cwd -V -l h_rt=3:0:0 -q hep.q -t 1-2456:1 batch_annotate_split_17.sh`
+
+    2018:
+
+
+    `qsub -e err/ -o out/ -cwd -V -l h_rt=3:0:0 -q hep.q -t 1-2289:1 batch_annotate_split_18.sh`
+
+
