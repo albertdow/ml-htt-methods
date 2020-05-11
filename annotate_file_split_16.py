@@ -3,7 +3,6 @@
 import ROOT
 ROOT.PyConfig.IgnoreCommandLineOptions = True  # disable ROOT internal argument parser
 
-from sklearn.preprocessing import StandardScaler
 import logging
 logger = logging.getLogger("annotate_file_inc.py")
 logger.setLevel(logging.DEBUG)
@@ -19,7 +18,6 @@ import pickle
 from array import array
 import argparse
 from sklearn.preprocessing import StandardScaler
-
 
 def parse_arguments():
     parser = argparse.ArgumentParser(
@@ -56,6 +54,14 @@ def parse_arguments():
         help=
         "Data preprocessing to be used. Note that these have to be booked in the reversed order [fold1*, fold0*], so that the preprocessing is independent for the folds."
     )
+    #parser.add_argument(
+    #    "--nsplit",
+    #    type=int,
+    #    default=0,
+    #    help=
+    #    "When splitting into multiple jobs determins the split to be run"
+    #)
+
     parser.add_argument(
         "--tree", default="ntuple", help="Name of trees in the directories.")
     parser.add_argument(
@@ -87,14 +93,14 @@ def load_files(filelist):
 
 def main(args, config, file_names):
 
-    # path = "/vols/cms/akd116/Offline/output/SM/2019/Jun07_2016/"
-    # path = "/vols/cms/mhh18/Offline/output/SM/11Nov_Run2018_tautau/"
-    # path = "/vols/cms/akd116/Offline/output/SM/2019/Nov21_2017_v2/"
-    path = "/vols/cms/dw515/Offline/output/SM/Jan24_2017_ttonly/"
+    path = "/vols/cms/dw515/Offline/output/SM/Mar27_2016/"
 
     # Sanity checks
-    for sample in file_names:
-        print sample
+    for sample_ in file_names:
+        sample=sample_.split()[0]
+        if len(sample_.split())>1: nsplit = int(sample_.split()[1])
+        else: nsplit = 0
+        print sample, nsplit
         # if not os.path.exists("{}/{}_{}_{}.root".format(path, sample, args.channel, args.era)):
         if not os.path.exists("{}/{}".format(path, sample)):
             logger.fatal("Input file %s does not exist.", sample)
@@ -136,7 +142,8 @@ def main(args, config, file_names):
         # preprocessing = [pickle.load(open(x, "rb")) for x in args.preprocessing]
 
         # Open input file
-        file_ = ROOT.TFile("{}/{}".format(path, sample), "UPDATE")
+        file_ = ROOT.TFile("{}/{}".format(path, sample))
+        #fileout_ = ROOT.TFile("{}/{}".format(path, sample), "APPEND")
         if file_ == None:
             logger.fatal("File %s is not existent.", sample)
             raise Exception
@@ -164,17 +171,39 @@ def main(args, config, file_names):
             #     tree.SetBranchAddress("eta_h", values[-1])
 
         response_max_score = array("f", [-9999])
-        branch_max_score = tree.Branch("{}_max_score".format(
-            args.tag), response_max_score, "{}_max_score/F".format(
-                args.tag))
-
         response_max_index = array("f", [-9999])
-        branch_max_index = tree.Branch("{}_max_index".format(
-            args.tag), response_max_index, "{}_max_index/F".format(
-                args.tag))
+
+        if tree.GetListOfBranches().FindObject("{}_max_score".format(args.tag)):
+           branch_max_score = tree.GetBranch("{}_max_score".format(args.tag))
+           tree.SetBranchAddress("{}_max_score".format(args.tag),response_max_score)
+        else:
+          branch_max_score = tree.Branch("{}_max_score".format(
+              args.tag), response_max_score, "{}_max_score/F".format(
+                  args.tag))
+
+        if tree.GetListOfBranches().FindObject("{}_max_index".format(args.tag)):
+           branch_max_index = tree.GetBranch("{}_max_index".format(args.tag))
+           tree.SetBranchAddress("{}_max_index".format(args.tag),response_max_index)
+        else:
+          branch_max_index = tree.Branch("{}_max_index".format(
+              args.tag), response_max_index, "{}_max_index/F".format(
+                  args.tag))
+
+ 
+        fileout_ = ROOT.TFile("{}/{}".format(path, sample.replace('.root','_%(nsplit)i.root'% vars())), "RECREATE")
+        newtree=tree.CloneTree(0)
 
         # Run the event loop
-        for i_event in range(tree.GetEntries()):
+
+        perjobs=300000
+        mini=nsplit*300000
+        maxi=(nsplit+1)*300000
+        entries=tree.GetEntries()
+        if maxi > entries: maxi=entries
+
+
+        for i_event in range(mini,maxi):
+
             tree.GetEntry(i_event)
 
             # Get event number and compute response
@@ -199,21 +228,26 @@ def main(args, config, file_names):
 
 
                 # Fill branches
-                branch_max_score.Fill()
-                branch_max_index.Fill()
+                newtree.Fill()
+                #branch_max_score.Fill()
+                #branch_max_index.Fill()
 
             else:
                 response_max_score[0] = -9999.0
                 response_max_index[0] = -9999.0
 
                 # Fill branches
-                branch_max_score.Fill()
-                branch_max_index.Fill()
+                newtree.Fill()
+                #branch_max_score.Fill()
+                #branch_max_index.Fill()
 
         logger.debug("Finished looping over events")
 
         # Write everything to file
-        file_.Write("ntuple",ROOT.TObject.kWriteDelete)
+        fileout_.cd()
+        newtree.Show(1)
+        newtree.Write("ntuple",ROOT.TObject.kWriteDelete)
+        fileout_.Close()
         file_.Close()
 
         logger.debug("Closed file")
