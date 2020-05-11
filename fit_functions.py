@@ -35,6 +35,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.model_selection import RandomizedSearchCV
 from sklearn.model_selection import StratifiedKFold
 from sklearn.model_selection import StratifiedShuffleSplit
+from sklearn.model_selection import cross_val_score
 from sklearn.preprocessing import StandardScaler
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.preprocessing import LabelEncoder
@@ -48,7 +49,7 @@ from sklearn.feature_selection import mutual_info_classif
 from sklearn.feature_selection import SelectFromModel
 from sklearn.neural_network import MLPClassifier
 
-# from bayes_opt import BayesianOptimization
+from bayes_opt import BayesianOptimization
 
 def fit_ttsplit(X, channel, fold):
 
@@ -1987,7 +1988,7 @@ def fit_multiclass_kfold_inc(X, fold, analysis, channel, sig_sample, era, splitB
     print('Training XGBoost model fold{}'.format(fold))
     print(X.columns)
     X.dropna(inplace=True)
-    
+
     # X = X[X["multi_class"] != "misc"]
     if channel == "em":
         X = X[X["multi_class"] != "qcd"]
@@ -2006,21 +2007,6 @@ def fit_multiclass_kfold_inc(X, fold, analysis, channel, sig_sample, era, splitB
         if splitByDM == 2:
             X.eval("(tau_decay_mode_1==1 and tau_decay_mode_2==10) or (tau_decay_mode_1==10 and tau_decay_mode_2==1)", inplace=True)
     # X = X.drop(["tau_decay_mode_1", "tau_decay_mode_2"], axis=1).reset_index(drop=True)
-
-
-
-    # X["rms_pt"] = np.sqrt(0.5 * (X.pt_1**2 + X.pt_2**2))
-    # X["rms_jpt"] = np.sqrt(0.5 * (X.jpt_1**2 + X.jpt_2**2))
-
-    # # make zeppenfeld variable
-    # X["zfeld"] = np.fabs(X.eta_h - (X.jeta_1 + X.jeta_2)/2.)
-    # # print X["zfeld"]
-    # # make centrality variable
-    # X["centrality"] = np.exp(-4*(X.zfeld/np.fabs(X.jdeta))**2)
-
-    # X["dphi_custom"] = np.arccos(1-X.mt_lep**2/(2.*X.pt_1*X.pt_2))
-    # X["dR_custom"] = np.sqrt((X.eta_1-X.eta_2)**2 + (X.dphi_custom)**2)
-
 
     X_train,X_test, y_train,y_test,w_train,w_test  = train_test_split(
         X,
@@ -2083,59 +2069,14 @@ def fit_multiclass_kfold_inc(X, fold, analysis, channel, sig_sample, era, splitB
     if sig_sample in ["tauspinner","powheg"]:
         dropVars.append("wt_cp_sm")
         dropVars.append("wt_cp_ps")
+        dropVars.append("wt_ph_nnlops")
     if channel == "em":
         dropVars.append("wt_em_qcd")
 
     X_train = X_train.drop(dropVars, axis=1).reset_index(drop=True)
     X_test = X_test.drop(dropVars, axis=1).reset_index(drop=True)
 
-    pf.plot_correlation_matrix(X_train, 'correlation_matrix.pdf')
-
-    # MI = mutual_info_classif(X_train,y_train)
-    # print MI
-
-
-    ## standard scaler
-    # scaler = StandardScaler()
-
-    # np_scaled_fit = scaler.fit(X_train.as_matrix())
-    # with open('{}_fold{}_scaler.pkl'.format(channel, fold), 'w') as f:
-    #     pickle.dump(scaler, f)
-    
-    # uncomment here if want to use scaler
-    ## load scaler from make_dataset
-    # with open('{}_{}_scaler.pkl'.format(channel,mjj_training), 'r') as f:
-    #     scaler = pickle.load(f)
-    # print X_train.head()
-    # np_scaled_train = scaler.transform(X_train.as_matrix())
-    # X_scaled_train = pd.DataFrame(np_scaled_train)
-    # X_scaled_train.columns = X_train.columns
-
-    # del X_train
-
-    # X_train = X_scaled_train
-    # print X_train.head()
-
-    # del X_scaled_train
-
-    # np_scaled_test = scaler.transform(X_test.as_matrix())
-    # X_scaled_test = pd.DataFrame(np_scaled_test)
-    # X_scaled_test.columns = X_test.columns
-
-    # del X_test
-
-    # X_test = X_scaled_test
-
-    # del X_scaled_test
-
-
-    # X_train = X_train.drop([
-    #     'zfeld','jeta_1','jeta_2'
-    #     ], axis=1).reset_index(drop=True)
-
-    # X_test = X_test.drop([
-    #     'zfeld','jeta_1','jeta_2'
-    #     ], axis=1).reset_index(drop=True)
+    pf.plot_correlation_matrix(X_train, 'correlation_matrix_fold{}_{}.pdf'.format(fold, era))
 
     # to use names "f0" etcs
     print(X_train.columns)
@@ -2149,19 +2090,19 @@ def fit_multiclass_kfold_inc(X, fold, analysis, channel, sig_sample, era, splitB
     with open('ytest_{}_{}_{}.pkl'.format(era, channel, fold), 'w') as f:
         pickle.dump(y_test, f)
 
-    ## SOME TESTS WITH WEIGHTS
-    # w_train *= (sum(w) / sum(w_train))
-    # w_test *= (sum(w) / sum(w_test))
-
-    # sum_wpos = np.sum(w_train[y_train == 1])
-    # sum_wneg = np.sum(w_train[y_train != 1])
-    # ratio = sum_wneg / sum_wpos
-
-    # X_train = X_train.drop(['wt', 'class', 'eta_1', 'eta_2'], axis=1).reset_index(drop=True)
-    # X_test = X_test.drop(['wt', 'class', 'eta_1', 'eta_2'], axis=1).reset_index(drop=True)
-
     if channel in ['tt']:
-        params = {
+        params_optimised = {
+            'gamma': 0.6116681199107202, 'booster': 'gbtree',
+            'max_depth': 4, 'learning_rate': 0.06427997105779841,
+            'objective': 'multi:softprob', 
+            'reg_lambda': 1.5550976281683702, 'reg_alpha': 0.12309703586128405,
+            'subsample': 0.7563612725885316,
+            'colsample_bytree': 0.8412848980537144,
+            'min_child_weight': 258.320681582356, 'max_delta_step': 2,
+            'num_class': 3, 'seed': 123456, 'nthread': 1, 'silent': 1,
+            'n_estimators':10000,
+        }
+        params = { # not used anymore
                 'objective':'multi:softprob',
                 'max_depth':4,
                 'min_child_weight':1,
@@ -2174,8 +2115,7 @@ def fit_multiclass_kfold_inc(X, fold, analysis, channel, sig_sample, era, splitB
                 'subsample':0.9,
                 'colsample_bytree':0.6,
                 # 'max_delta_step':5,
-                'nthread':-1,
-                # 'missing':-100.0,
+                'nthread':1,
                 'seed':123456
                 }
     if channel in ['mt','et']:
@@ -2193,34 +2133,12 @@ def fit_multiclass_kfold_inc(X, fold, analysis, channel, sig_sample, era, splitB
                 'subsample':0.9,
                 'colsample_bytree':0.6,
                 # 'max_delta_step':5,
-                'nthread':-1,
-                # 'missing':-100.0,
-                'seed':123456
-                }
-    if channel in ['em']:
-        params = {
-                'objective':'multi:softprob',
-                'max_depth':4,
-                'min_child_weight':1,
-                'learning_rate':0.05,
-                'silent':1,
-                # 'scale_pos_weight':1,
-                'n_estimators':10000,
-                'gamma':0.1,
-                'reg_lambda':0.3,
-                'subsample':0.8,
-                # 'colsample_bytree':0.6,
-                # 'max_delta_step':5,
-                'nthread':-1,
-                # 'missing':-100.0,
+                'nthread':1,
                 'seed':123456
                 }
 
-
-    xgb_clf = xgb.XGBClassifier(**params)
-
-    # select features using threshold
-    # selection = SelectFromModel(xgb_clf)
+    xgb_clf = xgb.XGBClassifier(**params_optimised)
+    print(xgb_clf)
 
     if channel in ['tt','mt','et','em']:
         xgb_clf.fit(
@@ -2234,26 +2152,7 @@ def fit_multiclass_kfold_inc(X, fold, analysis, channel, sig_sample, era, splitB
                 # eval_metric = custom_f1_score,
                 verbose=True
                 )
-            # selection.fit(
-            #         X_train,
-            #         y_train,
-            #         sample_weight = w_train,
-            #         early_stopping_rounds=50,
-            #         eval_set=[(X_train, y_train, w_train), (X_test, y_test, w_test)],
-            #         eval_metric = ['merror','mlogloss'],
-            #         # eval_metric = custom_f1_score,
-            #         verbose=True
-            #         )
 
-    # evals_result = xgb_clf.evals_result()
-    # print selection.get_support()
-
-    # print "best iteration: ",xgb_clf.best_iteration
-
-    # eli5 explanation
-    # print explain_prediction_xgboost(xgb_clf.get_booster(),X_test.iloc[0])
-
-    # y_predict = selection.predict(X_test)
     y_predict = xgb_clf.predict(X_test)
     print('true label: {},{},{},{},{},{}'.format(y_test[0],y_test[1],y_test[2],y_test[3],y_test[4],y_test[5]))
     print('predicted label: {},{},{},{},{},{}'.format(y_predict[0],y_predict[1],y_predict[2],y_predict[3],y_predict[4],y_predict[5]))
@@ -2263,7 +2162,6 @@ def fit_multiclass_kfold_inc(X, fold, analysis, channel, sig_sample, era, splitB
     print(classification_report(
             y_test,
             y_predict,
-            # target_names=["background", "signal"],
             target_names=list(encoder_test.classes_),
             sample_weight=w_test
             ))
@@ -2282,13 +2180,11 @@ def fit_multiclass_kfold_inc(X, fold, analysis, channel, sig_sample, era, splitB
     xg_train = xgb.DMatrix(
             X_train,
             label=y_train,
-            # missing=-100.0,
             weight=w_train
             )
     xg_test = xgb.DMatrix(
             X_test,
             label=y_test,
-            # missing=-100.0,
             weight=w_test
             )
 
@@ -2300,12 +2196,6 @@ def fit_multiclass_kfold_inc(X, fold, analysis, channel, sig_sample, era, splitB
     pf.plot_learning_curve(xgb_clf,
             "merror",
             "multi_fold{}_{}_{}_{}_{}_learning_curve_error.pdf".format(fold, analysis, channel, sig_sample, era))
-
-    # pf.plot_output(
-    #         xgb_clf.booster(),
-    #         xg_train, xg_test,
-    #         y_train, y_test,
-    #         'multi_{}_{}_output.pdf'.format(channel, sig_sample))
 
     pf.plot_features(
             xgb_clf,
@@ -2322,7 +2212,6 @@ def fit_multiclass_kfold_inc(X, fold, analysis, channel, sig_sample, era, splitB
 
     pf.plot_confusion_matrix(
             y_test, y_prediction, w_test,
-            # classes=['background', 'signal'],
             classes=list(encoder_test.classes_),
             figname='multi_fold{}_{}_{}_{}_{}_non-normalised_weights_cm.pdf'.format(fold, analysis, channel, sig_sample, era))
 
@@ -2338,8 +2227,6 @@ def fit_multiclass_kfold_inc(X, fold, analysis, channel, sig_sample, era, splitB
             normalise_by_row=True)
 
     return None
-
-
 
 ######## TESTING CV
 def fit_multiclass_cvkfold(X, fold, analysis, channel, sig_sample):

@@ -11,6 +11,13 @@ import xgboost as xgb
 
 from sklearn.metrics import confusion_matrix
 
+# plt.style.use('cms')
+plt.rcParams.update({
+    "figure.dpi": 150,
+    "figure.figsize": (4, 3),
+    "lines.markersize": 3,
+    "errorbar.capsize": 2,
+})
 
 def plot_signal_background(data1, data2, column,
                         channel, sig_sample="",
@@ -208,7 +215,7 @@ def plot_correlation_matrix(data, figname, **kwds):
 
     corrmat = data.corr(**kwds)
 
-    fig, ax1 = plt.subplots(ncols=1, figsize=(10,8))
+    fig, ax1 = plt.subplots(ncols=1, figsize=(6,3))
 
     opts = {'cmap': plt.get_cmap("RdBu"),
             'vmin': -1, 'vmax': +1}

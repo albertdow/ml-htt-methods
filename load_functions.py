@@ -3,13 +3,10 @@ import os
 import pandas as pd
 import numpy as np
 
-## NEED TO ADD ERA TO ADD DIFFERENT SELECTION FOR 2017/2018 (for mu tau channel especially)
-## SO WE CAN USE THIS IN THE DECAYS ANALYSIS
-
-def load_mc_ntuple(data, tree, branch, mjj_training, channel, cut_feats, apply_cuts, split_by_sample, signal, embedding, ff):
-    # LOAD MC NTUPLES AND APPLY BASELINE CUTS BY CHANNEL
-    # need to do something for when df too large..
-
+def load_mc_ntuple(
+    data, tree, branch, mjj_training, channel, cut_feats, apply_cuts,
+    split_by_sample, signal, embedding, ff, dijet_feats, singlejet_feats,
+):
 
     try:
         iterator = uproot.iterate(data, tree, branches=branch+cut_feats)
@@ -23,7 +20,7 @@ def load_mc_ntuple(data, tree, branch, mjj_training, channel, cut_feats, apply_c
 
             if apply_cuts:
                 if channel == 'tt':
-                    df_b = df_b.loc[df_b.eval(
+                    df_b = df_b.query(
                             "pt_1 > 40 "
                             "and deepTauVsJets_medium_1  > 0.5 "
                             "and deepTauVsJets_medium_2  > 0.5 "
@@ -34,8 +31,8 @@ def load_mc_ntuple(data, tree, branch, mjj_training, channel, cut_feats, apply_c
                             "and leptonveto == False "
                             "and trg_doubletau == True "
                             "and mva_dm_1 != -1 "
-                            "and mva_dm_2 != -1"),:
-                            ]
+                            "and mva_dm_2 != -1"
+                            )
 
                 elif channel == 'mt':
                     df_b = df_b[
@@ -126,6 +123,16 @@ def load_mc_ntuple(data, tree, branch, mjj_training, channel, cut_feats, apply_c
                         assert ValueError('Mjj training not in ["low", "high"]')
 
                 df_b = df_b[(df_b['svfit_mass'] > 0)] ## SOME svfit_mass ARE MISSING
+
+                # only define dijet features in case when there are two jets
+                # with pT > 30 GeV, otherwise taking pT > 20 GeV jets as well
+                for dijet_feature in dijet_feats:
+                    df_b.loc[df_b["n_jets"] < 2, dijet_feature] = -9999
+                for singlejet_feature in singlejet_feats:
+                    print(singlejet_feature)
+                    print(df_b.loc[df_b["n_jets"] < 1, singlejet_feature])
+                    df_b.loc[df_b["n_jets"] < 1, singlejet_feature] = -9999
+                print(df_b.loc[df_b["n_jets"] < 1, singlejet_feature])
 
             df_b = df_b.drop(cut_feats, axis=1)
             df.append(df_b)
@@ -237,7 +244,10 @@ def load_data_ntuple(data, tree, branch, mjj_training, channel, cut_feats, apply
 
     return df
 
-def load_ff_ntuple(data, tree, branch, mjj_training, channel, cut_feats, apply_cuts, split_by_sample):
+def load_ff_ntuple(
+    data, tree, branch, mjj_training, channel, cut_feats, 
+    apply_cuts, split_by_sample, dijet_feats, singlejet_feats,
+):
 
     try:
         iterator = uproot.iterate(data, tree, branches=branch+cut_feats)
@@ -281,7 +291,7 @@ def load_ff_ntuple(data, tree, branch, mjj_training, channel, cut_feats, apply_c
                 # df_b_tt.append(df_b_2)
 
                 # new ffs with deeptau
-                df_b = df_b.loc[df_b.eval(
+                df_b = df_b.query(
                         "pt_1 > 40 "
                         "and deepTauVsJets_medium_1 < 0.5 "
                         "and deepTauVsJets_vvvloose_1 > 0.5 "
@@ -293,8 +303,8 @@ def load_ff_ntuple(data, tree, branch, mjj_training, channel, cut_feats, apply_c
                         "and leptonveto == False "
                         "and trg_doubletau == True "
                         "and mva_dm_1 != -1 "
-                        "and mva_dm_2 != -1"),:
-                        ].copy(deep=True)
+                        "and mva_dm_2 != -1"
+                        )
 
                 df_b["wt"] = df_b["wt_ff_1"]
 
@@ -352,6 +362,13 @@ def load_ff_ntuple(data, tree, branch, mjj_training, channel, cut_feats, apply_c
                     assert ValueError('Mjj training not in ["low", "high"]')
 
             df_b = df_b[(df_b['svfit_mass'] > 0)] ## SOME svfit_mass ARE MISSING
+
+            # only define dijet features in case when there are two jets
+            # with pT > 30 GeV, otherwise taking pT > 20 GeV jets as well
+            for dijet_feature in dijet_feats:
+                df_b.loc[df_b["n_jets"] < 2, dijet_feature] = -9999
+            for singlejet_feature in singlejet_feats:
+                df_b.loc[df_b["n_jets"] < 1, singlejet_feature] = -9999
 
         df_b = df_b.drop(cut_feats, axis=1)
         df.append(df_b)

@@ -141,30 +141,41 @@ def main(opt):
             ff.fit_multiclass_ttsplit(train_data, opt.analysis, opt.channel, opt.sig_sample)
 
         elif opt.inc:
-            if opt.era == "2018":
-                train_fold = pd.read_hdf('data_tauspinner_2018/dataset_fold{}_{}_{}_{}.hdf5'
-                        .format(opt.fold, opt.analysis, opt.channel, opt.era))
-            if opt.era == "2017":
-                train_fold = pd.read_hdf('data_tauspinner_2017/dataset_fold{}_{}_{}_{}.hdf5'
-                        .format(opt.fold, opt.analysis, opt.channel, opt.era))
-            if opt.era == "2016":
-                # previous Feb13 model
-                # train_fold = pd.read_hdf('data_Dec05/dataset_fold{}_{}_{}_{}.hdf5'
-                #         .format(opt.fold, opt.analysis, opt.channel, opt.era))
+            # if opt.era == "2018":
+            #     # train_fold = pd.read_hdf('data_tauspinner_2018/dataset_fold{}_{}_{}_{}.hdf5'
+            #     #         .format(opt.fold, opt.analysis, opt.channel, opt.era))
+            #     # train_fold = pd.read_hdf('data_tauspinner_12Mar2020_2018_NopT2dijetpT/dataset_fold{}_{}_{}_{}.hdf5'
+            #     train_fold = pd.read_hdf('data_tauspinner_08Apr2020_2018/dataset_fold{}_{}_{}_{}.hdf5'
+            #             .format(opt.fold, opt.analysis, opt.channel, opt.era))
+            # if opt.era == "2017":
+            #     # train_fold = pd.read_hdf('data_tauspinner_2017/dataset_fold{}_{}_{}_{}.hdf5'
+            #     #         .format(opt.fold, opt.analysis, opt.channel, opt.era))
+            #     # train_fold = pd.read_hdf('data_tauspinner_12Mar2020_2017/dataset_fold{}_{}_{}_{}.hdf5'
+            #     train_fold = pd.read_hdf('data_tauspinner_08Apr2020_2017/dataset_fold{}_{}_{}_{}.hdf5'
+            #             .format(opt.fold, opt.analysis, opt.channel, opt.era))
+            # if opt.era == "2016":
+            #     # previous Feb13 model
+            #     # train_fold = pd.read_hdf('data_Dec05/dataset_fold{}_{}_{}_{}.hdf5'
+            #     #         .format(opt.fold, opt.analysis, opt.channel, opt.era))
 
-                # PS tauspinner
-                # train_fold = pd.read_hdf('data_CPdecay2016_trainOnPS/dataset_fold{}_{}_{}_{}.hdf5'
-                #         .format(opt.fold, opt.analysis, opt.channel, opt.era))
+            #     # PS tauspinner
+            #     # train_fold = pd.read_hdf('data_CPdecay2016_trainOnPS/dataset_fold{}_{}_{}_{}.hdf5'
+            #     #         .format(opt.fold, opt.analysis, opt.channel, opt.era))
 
-                # SM tauspinner
-                # train_fold = pd.read_hdf('data_CPdecay2016_trainOnSM/dataset_fold{}_{}_{}_{}.hdf5'
-                train_fold = pd.read_hdf('data_CPdecay2016_SM_splitByDM/dataset_fold{}_{}_{}_{}.hdf5'
-                        .format(opt.fold, opt.analysis, opt.channel, opt.era, opt.splitByDM))
+            #     # SM tauspinner
+            #     # train_fold = pd.read_hdf('data_CPdecay2016_trainOnSM/dataset_fold{}_{}_{}_{}.hdf5'
+            #     # train_fold = pd.read_hdf('data_CPdecay2016_SM_splitByDM/dataset_fold{}_{}_{}_{}.hdf5'
+            #     #         .format(opt.fold, opt.analysis, opt.channel, opt.era, opt.splitByDM))
+            #     # train_fold = pd.read_hdf('data_tauspinner_12Mar2020_2016/dataset_fold{}_{}_{}_{}.hdf5'
+            #     train_fold = pd.read_hdf('data_tauspinner_08Apr2020_2018/dataset_fold{}_{}_{}_{}.hdf5'
+            #             .format(opt.fold, opt.analysis, opt.channel, opt.era))
 
                 # to use SM analysis like variables
                 # train_fold = pd.read_hdf('data_CPdecay2016/dataset_fold{}_{}_{}_{}.hdf5' # Feb26
                 #         .format(opt.fold, opt.analysis, opt.channel, opt.era))
 
+            train_fold = pd.read_hdf('data_tauspinner_11May2020_{}/dataset_fold{}_{}_{}_{}.hdf5'
+                    .format(opt.era, opt.fold, opt.analysis, opt.channel, opt.era))
             print('train_fold used: dataset_fold{}_{}_{}_{}.hdf5'.format(opt.fold, opt.analysis, opt.channel, opt.era))
             print(train_fold.shape)
             ff.fit_multiclass_kfold_inc(train_fold, opt.fold, opt.analysis, opt.channel, opt.sig_sample, opt.era)

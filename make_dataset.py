@@ -113,8 +113,9 @@ def main(opt):
                 ]
         if opt.ff:
             cut_features.extend([
-                'mva_olddm_vloose_1', 'mva_olddm_vloose_2',
-                'wt_ff_1','wt_ff_2','wt_ff_dmbins_1',
+                # 'mva_olddm_vloose_1', 'mva_olddm_vloose_2',
+                'wt_ff_1',
+                # 'wt_ff_2','wt_ff_dmbins_1',
                 'mva_dm_1','mva_dm_2',
                 ])
 
@@ -232,18 +233,23 @@ def main(opt):
         if opt.analysis == 'sm':
             if opt.channel == 'tt': # latest SM vars
                 features = [
-                        # 'm_sv',
-                        'svfit_mass',
-                        'pt_1',
-                        #'pt_2',
-                        'jpt_1',
-                        'met',
-                        'n_jets','pt_vis','pt_tt',
-                        'mjj','jdeta','m_vis',
-                        #'dijetpt',
-                        # add dR variable to test
-                        #'dR',
-                        ]
+                    # 'm_sv',
+                    'svfit_mass',
+                    'pt_1',
+                    #'pt_2',
+                    'jpt_1',
+                    'met',
+                    'n_jets','pt_vis','pt_tt',
+                    'mjj','jdeta', # add to dijet_features
+                    'm_vis',
+                    #'dijetpt',
+                    # add dR variable to test
+                    #'dR',
+                ]
+
+                dijet_features  = ['mjj','jdeta']
+                singlejet_features = ['jpt_1']
+
             if opt.channel == 'mt':
                 features = [
                         'm_sv','pt_1','pt_2',
@@ -345,14 +351,17 @@ def main(opt):
         # path = '/vols/cms/akd116/Offline/output/SM/2019/CPdecay_Apr26_2/'
         # path = '/vols/cms/akd116/Offline/output/SM/2019/Jun07_2016/'
         # path = '/vols/cms/dw515/Offline/output/SM/Jan24_2016_ttonly/'
-        path = '/vols/cms/dw515/Offline/output/SM/Mar27_2016/'
+        # path = '/vols/cms/dw515/Offline/output/SM/Mar27_2016/'
+        path = '/vols/cms/dw515/Offline/output/SM/May04_2016/'
     elif opt.era == "2017":
         # path = '/vols/cms/akd116/Offline/output/SM/2019/Nov21_2017_v2/'
         # path = '/vols/cms/dw515/Offline/output/SM/Jan24_2017_ttonly/'
-        path = '/vols/cms/dw515/Offline/output/SM/Mar27_2017/'
+        # path = '/vols/cms/dw515/Offline/output/SM/Mar27_2017/'
+        path = '/vols/cms/dw515/Offline/output/SM/May04_2017/'
     elif opt.era == "2018":
         # path = '/vols/cms/dw515/Offline/output/SM/Jan24_2018_ttonly/'
-        path = '/vols/cms/dw515/Offline/output/SM/Mar27_2018/'
+        # path = '/vols/cms/dw515/Offline/output/SM/Mar27_2018/'
+        path = '/vols/cms/dw515/Offline/output/SM/May04_2018/'
 
     ggh = []
     for sig in sig_files:
@@ -368,7 +377,9 @@ def main(opt):
                 split_by_sample=opt.split,
                 signal=True,
                 embedding=False,
-                ff=opt.ff
+                ff=opt.ff,
+                dijet_feats=dijet_features,
+                singlejet_feats=singlejet_features,
                 )
         ## need to multiply event weight by
         ## (XS * Lumi) / #events
@@ -480,7 +491,9 @@ def main(opt):
                 split_by_sample=opt.split,
                 signal=isSignal,
                 embedding=False,
-                ff=opt.ff
+                ff=opt.ff,
+                dijet_feats=dijet_features,
+                singlejet_feats=singlejet_features,
                 )
         if opt.mode in ['keras_multi', 'xgb_multi'] and bkg in [
             'DYJetsToLL_M-10-50-LO','DY1JetsToLL-LO','DY2JetsToLL-LO',
@@ -662,7 +675,9 @@ def main(opt):
                     split_by_sample=opt.split,
                     signal=False,
                     embedding=opt.embedding,
-                    ff=opt.ff
+                    ff=opt.ff,
+                    dijet_feats=dijet_features,
+                    singlejet_feats=singlejet_features,
                     )
 
             ztt_embed_tmp = pd.DataFrame()
@@ -711,7 +726,9 @@ def main(opt):
                     opt.channel,
                     cut_features,
                     apply_cuts=opt.apply_selection,
-                    split_by_sample=opt.split
+                    split_by_sample=opt.split,
+                    dijet_feats=dijet_features,
+                    singlejet_feats=singlejet_features,
                     )
 
             data_tmp['process'] = data
@@ -864,12 +881,14 @@ def main(opt):
         X_fold1 = X[(X['event'] % 2 == 1)]#.drop(['event'], axis=1)
 
         # X_fold1.to_hdf('data_tauspinner_12Mar2020_{}_NopT2dijetpT/dataset_fold1_{}_{}_{}.hdf5' # odd event numbers
-        X_fold1.to_hdf('data_tauspinner_08Apr2020_{}/dataset_fold1_{}_{}_{}.hdf5' # odd event numbers
+        # X_fold1.to_hdf('data_tauspinner_08Apr2020_{}/dataset_fold1_{}_{}_{}.hdf5' # odd event numbers
+        X_fold1.to_hdf('data_tauspinner_11May2020_{}/dataset_fold1_{}_{}_{}.hdf5' # odd event numbers
             .format(opt.era, opt.analysis, opt.channel, opt.era),
             key='X_fold1',
             mode='w')
         # X_fold0.to_hdf('data_tauspinner_12Mar2020_{}_NopT2dijetpT/dataset_fold0_{}_{}_{}.hdf5' # even event numbers
-        X_fold0.to_hdf('data_tauspinner_08Apr2020_{}/dataset_fold0_{}_{}_{}.hdf5' # even event numbers
+        # X_fold0.to_hdf('data_tauspinner_08Apr2020_{}/dataset_fold0_{}_{}_{}.hdf5' # even event numbers
+        X_fold0.to_hdf('data_tauspinner_11May2020_{}/dataset_fold0_{}_{}_{}.hdf5' # even event numbers
             .format(opt.era, opt.analysis, opt.channel, opt.era),
             key='X_fold0',
             mode='w')
