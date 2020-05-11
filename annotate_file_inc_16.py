@@ -176,13 +176,19 @@ def main(args, config, file_names):
             # Get event number and compute response
             event = int(getattr(tree, "event"))
             m_sv = float(getattr(tree, "svfit_mass"))
+            print(m_sv)
 
             if m_sv > 0:
 
                 values_stacked = np.hstack(values).reshape(1, len(values))
                 response = classifier[event % 2].predict_proba(values_stacked,
                         ntree_limit=classifier[event % 2].best_iteration+1)
+                print(event)
+                print("even or odd: " ,event % 2)
+                print("Using : ",classifier[event % 2])
                 response = np.squeeze(response)
+                print(values_stacked)
+                print(response)
 
                 # Find max score and index
                 response_max_score[0] = -9999.0
