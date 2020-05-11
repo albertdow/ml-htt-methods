@@ -93,7 +93,9 @@ def load_files(filelist):
 
 def main(args, config, file_names):
 
-    path = "/vols/cms/dw515/Offline/output/SM/Mar27_2016/"
+    # path = "/vols/cms/dw515/Offline/output/SM/Mar27_2016/"
+    # path = "/vols/cms/dw515/Offline/output/SM/May11_2016/"
+    path = "./"
 
     # Sanity checks
     for sample_ in file_names:
@@ -157,6 +159,7 @@ def main(args, config, file_names):
         # Book branches for annotation
         values = []
         for variable in config["variables"]:
+            print(variable)
             if variable in ["dijetpt","eta_h","IC_binary_test_4_score","IC_binary_test_4_index","bpt_1",]:
                 values.append(array("f", [-9999]))
             if variable in ["eta_1","eta_2","jdeta","jpt_1","jpt_2","svfit_mass","m_sv","m_vis","met","jeta_1","jeta_2","mt_tot","mt_sv",
@@ -213,6 +216,19 @@ def main(args, config, file_names):
             if m_sv > 0:
 
                 values_stacked = np.hstack(values).reshape(1, len(values))
+
+                # only define dijet features in case when there are two jets
+                # with pT > 30 GeV
+                # hacky but works for now
+                # indices
+                # mjj: 4, jdeta: 0, jpt_1: 1, n_jets: 5
+                # fix dijet variables:
+                if values_stacked[0][5] < 2:
+                    values_stacked[0][4] = -9999.
+                    values_stacked[0][0] = -9999.
+                if values_stacked[0][5] < 1:
+                    values_stacked[0][1] = -9999.
+
                 response = classifier[event % 2].predict_proba(values_stacked,
                         ntree_limit=classifier[event % 2].best_iteration+1)
                 response = np.squeeze(response)
