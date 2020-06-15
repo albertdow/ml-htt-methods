@@ -23,5 +23,5 @@ export OMP_NUM_THREADS=1
 
 # python annotate_file_split_16.py filelist/tmp_2016_split_nominal/tt/x${inputNumber} IC_11May2020 --model_folder ./data_tauspinner_11May2020_2016/ --output-folder /vols/cms/akd116/Offline/output/SM/2020/May26_2016/ --training tauspinner --era 2016 --channel tt --config-training data_tauspinner_11May2020_2016/tt_2016_config_inc.yaml &> filelist/tmp_2016_split_nominal/tt/${inputNumber}.log 
 
-python annotate_file_split_16.py filelist/tmp_2016_split/tt/x${inputNumber} IC_01Jun2020 --model_folder ./data_tauspinner_01Jun2020_2016/ --output-folder /vols/cms/akd116/Offline/output/SM/2020/Jun08_2016/ --training tauspinner --era 2016 --channel tt --config-training data_tauspinner_11May2020_2016/tt_2016_config_inc.yaml &> filelist/tmp_2016_split/tt/${inputNumber}.log 
+python annotate_file_split_16.py filelist/tmp_2016_split/tt/x${inputNumber} IC_01Jun2020 --model_folder ./data_tauspinner_01Jun2020_2016/ --output-folder /vols/cms/akd116/Offline/output/SM/2020/Jun08_2016/ --training tauspinner --era 2016 --channel tt --config-training data_tauspinner_01Jun2020_2016/tt_2016_config_inc.yaml &> filelist/tmp_2016_split/tt/${inputNumber}.log 
 

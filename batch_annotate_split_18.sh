@@ -19,5 +19,5 @@ inputNumber=$SGE_TASK_ID
 
 # tt 
 export OMP_NUM_THREADS=1
-python annotate_file_split_18.py filelist/tmp_2018_split/tt/x${inputNumber} IC_01Jun2020 --model_folder ./data_tauspinner_01Jun2020_2018/ --output-folder /vols/cms/akd116/Offline/output/SM/2020/Jun08_2018/ --training tauspinner --era 2018 --channel tt --config-training data_tauspinner_11May2020_2018/tt_2018_config_inc.yaml &> filelist/tmp_2018_split/tt/${inputNumber}.log 
+python annotate_file_split_18.py filelist/tmp_2018_split/tt/x${inputNumber} IC_01Jun2020 --model_folder ./data_tauspinner_01Jun2020_2018/ --output-folder /vols/cms/akd116/Offline/output/SM/2020/Jun08_2018/ --training tauspinner --era 2018 --channel tt --config-training data_tauspinner_01Jun2020_2018/tt_2018_config_inc.yaml &> filelist/tmp_2018_split/tt/${inputNumber}.log 
 
