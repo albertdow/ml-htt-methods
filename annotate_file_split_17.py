@@ -61,7 +61,10 @@ def parse_arguments():
     #    help=
     #    "When splitting into multiple jobs determins the split to be run"
     #)
-
+    parser.add_argument(
+        "--output-folder",type=str, default="",
+        help="If specified, chose where to save outputs with BDT scores"
+    )
     parser.add_argument(
         "--tree", default="ntuple", help="Name of trees in the directories.")
     parser.add_argument(
@@ -93,13 +96,19 @@ def load_files(filelist):
 
 def main(args, config, file_names):
 
-    path = "/vols/cms/dw515/Offline/output/SM/Mar27_2017/"
+    # path = "/vols/cms/dw515/Offline/output/SM/Mar27_2017/"
+    # path = "/vols/cms/dw515/Offline/output/SM/May04_2017/"
+    # path = "/vols/cms/dw515/Offline/output/SM/May11_2017/"
+    # path = "/vols/cms/dw515/Offline/output/SM/May19_2017/"
+    path = '/vols/cms/dw515/Offline/output/SM/May30_2017/'
 
     # Sanity checks
     for sample_ in file_names:
-        sample=sample_.split()[0]
-        if len(sample_.split())>1: nsplit = int(sample_.split()[1])
-        else: nsplit = 0
+        sample = sample_.split()[0]
+        if len(sample_.split()) > 1:
+            nsplit = int(sample_.split()[1])
+        else: 
+            nsplit = 0
         print sample, nsplit
         # if not os.path.exists("{}/{}_{}_{}.root".format(path, sample, args.channel, args.era)):
         if not os.path.exists("{}/{}".format(path, sample)):
@@ -189,7 +198,10 @@ def main(args, config, file_names):
               args.tag), response_max_index, "{}_max_index/F".format(
                   args.tag))
  
-        fileout_ = ROOT.TFile("{}/{}".format(path, sample.replace('.root','_%(nsplit)i.root'% vars())), "RECREATE")
+        if args.output_folder != "":
+            fileout_ = ROOT.TFile("{}/{}".format(args.output_folder, sample.replace('.root','_{}.root'.format(nsplit))), "RECREATE")
+        else:
+            fileout_ = ROOT.TFile("{}/{}".format(path, sample.replace('.root','_{}.root'.format(nsplit))), "RECREATE")
         newtree=tree.CloneTree(0)
 
         # Run the event loop

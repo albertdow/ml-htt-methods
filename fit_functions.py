@@ -2076,7 +2076,7 @@ def fit_multiclass_kfold_inc(X, fold, analysis, channel, sig_sample, era, splitB
     X_train = X_train.drop(dropVars, axis=1).reset_index(drop=True)
     X_test = X_test.drop(dropVars, axis=1).reset_index(drop=True)
 
-    pf.plot_correlation_matrix(X_train, 'correlation_matrix_fold{}_{}.pdf'.format(fold, era))
+    # pf.plot_correlation_matrix(X_train, 'correlation_matrix_fold{}_{}.pdf'.format(fold, era))
 
     # to use names "f0" etcs
     print(X_train.columns)
@@ -2138,6 +2138,7 @@ def fit_multiclass_kfold_inc(X, fold, analysis, channel, sig_sample, era, splitB
                 }
 
     xgb_clf = xgb.XGBClassifier(**params_optimised)
+    # xgb_clf = xgb.XGBClassifier(**params)
     print(xgb_clf)
 
     if channel in ['tt','mt','et','em']:

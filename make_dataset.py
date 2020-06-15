@@ -352,20 +352,24 @@ def main(opt):
         # path = '/vols/cms/akd116/Offline/output/SM/2019/Jun07_2016/'
         # path = '/vols/cms/dw515/Offline/output/SM/Jan24_2016_ttonly/'
         # path = '/vols/cms/dw515/Offline/output/SM/Mar27_2016/'
-        path = '/vols/cms/dw515/Offline/output/SM/May04_2016/'
+        # path = '/vols/cms/dw515/Offline/output/SM/May04_2016/'
+        path = '/vols/cms/dw515/Offline/output/SM/May30_2016/'
     elif opt.era == "2017":
         # path = '/vols/cms/akd116/Offline/output/SM/2019/Nov21_2017_v2/'
         # path = '/vols/cms/dw515/Offline/output/SM/Jan24_2017_ttonly/'
         # path = '/vols/cms/dw515/Offline/output/SM/Mar27_2017/'
-        path = '/vols/cms/dw515/Offline/output/SM/May04_2017/'
+        # path = '/vols/cms/dw515/Offline/output/SM/May04_2017/'
+        path = '/vols/cms/dw515/Offline/output/SM/May30_2017/'
     elif opt.era == "2018":
         # path = '/vols/cms/dw515/Offline/output/SM/Jan24_2018_ttonly/'
         # path = '/vols/cms/dw515/Offline/output/SM/Mar27_2018/'
-        path = '/vols/cms/dw515/Offline/output/SM/May04_2018/'
+        # path = '/vols/cms/dw515/Offline/output/SM/May04_2018/'
+        path = '/vols/cms/dw515/Offline/output/SM/May30_2018/'
 
     ggh = []
     for sig in sig_files:
         print sig
+        print('{}/{}_{}_{}.root'.format(path, sig, opt.channel, opt.era))
         sig_tmp = lf.load_mc_ntuple(
                 '{}/{}_{}_{}.root'.format(path, sig, opt.channel, opt.era),
                 'ntuple',
@@ -437,18 +441,15 @@ def main(opt):
                 "WplusHToTauTauUncorrelatedDecay_Filtered",
                 "ZHToTauTauUncorrelatedDecay_Filtered",
                 ]:
-            print("test")
             xs_tmp = params_file[sig]['xs']
             events_tmp = params_file[sig]['evt']
             filter_eff_tmp = params_file[sig]['eff']
             sig_tmp['wt_xs'] = sig_tmp["wt_cp_sm"] * \
                     sig_tmp['wt'] * (xs_tmp * lumi)/events_tmp * filter_eff_tmp
-            print(xs_tmp, events_tmp)
             if "GluGlu" in sig:
                 print("Multiplying by ggH NNLOPS weight")
                 print(sig_tmp["wt_ph_nnlops"])
                 sig_tmp["wt_xs"] *= sig_tmp["wt_ph_nnlops"]
-            print(xs_tmp, events_tmp)
         else:
             xs_tmp = params_file[sig]['xs']
             events_tmp = params_file[sig]['evt']
@@ -882,13 +883,17 @@ def main(opt):
 
         # X_fold1.to_hdf('data_tauspinner_12Mar2020_{}_NopT2dijetpT/dataset_fold1_{}_{}_{}.hdf5' # odd event numbers
         # X_fold1.to_hdf('data_tauspinner_08Apr2020_{}/dataset_fold1_{}_{}_{}.hdf5' # odd event numbers
-        X_fold1.to_hdf('data_tauspinner_11May2020_{}/dataset_fold1_{}_{}_{}.hdf5' # odd event numbers
+        # X_fold1.to_hdf('data_tauspinner_11May2020_{}/dataset_fold1_{}_{}_{}.hdf5' # odd event numbers
+        # X_fold1.to_hdf('data_tauspinner_PUJIDCheck_{}/dataset_fold1_{}_{}_{}.hdf5' # odd event numbers
+        X_fold1.to_hdf('data_tauspinner_01Jun2020_{}/dataset_fold1_{}_{}_{}.hdf5' # odd event numbers
             .format(opt.era, opt.analysis, opt.channel, opt.era),
             key='X_fold1',
             mode='w')
         # X_fold0.to_hdf('data_tauspinner_12Mar2020_{}_NopT2dijetpT/dataset_fold0_{}_{}_{}.hdf5' # even event numbers
         # X_fold0.to_hdf('data_tauspinner_08Apr2020_{}/dataset_fold0_{}_{}_{}.hdf5' # even event numbers
-        X_fold0.to_hdf('data_tauspinner_11May2020_{}/dataset_fold0_{}_{}_{}.hdf5' # even event numbers
+        # X_fold0.to_hdf('data_tauspinner_11May2020_{}/dataset_fold0_{}_{}_{}.hdf5' # even event numbers
+        # X_fold0.to_hdf('data_tauspinner_PUJIDCheck_{}/dataset_fold0_{}_{}_{}.hdf5' # even event numbers
+        X_fold0.to_hdf('data_tauspinner_01Jun2020_{}/dataset_fold0_{}_{}_{}.hdf5' # even event numbers
             .format(opt.era, opt.analysis, opt.channel, opt.era),
             key='X_fold0',
             mode='w')

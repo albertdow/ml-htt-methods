@@ -174,7 +174,8 @@ def main(opt):
                 # train_fold = pd.read_hdf('data_CPdecay2016/dataset_fold{}_{}_{}_{}.hdf5' # Feb26
                 #         .format(opt.fold, opt.analysis, opt.channel, opt.era))
 
-            train_fold = pd.read_hdf('data_tauspinner_11May2020_{}/dataset_fold{}_{}_{}_{}.hdf5'
+            # train_fold = pd.read_hdf('data_tauspinner_11May2020_{}/dataset_fold{}_{}_{}_{}.hdf5'
+            train_fold = pd.read_hdf('data_tauspinner_01Jun2020_{}/dataset_fold{}_{}_{}_{}.hdf5'
                     .format(opt.era, opt.fold, opt.analysis, opt.channel, opt.era))
             print('train_fold used: dataset_fold{}_{}_{}_{}.hdf5'.format(opt.fold, opt.analysis, opt.channel, opt.era))
             print(train_fold.shape)

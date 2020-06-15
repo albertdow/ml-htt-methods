@@ -8,8 +8,9 @@ import random
 import numpy as np
 import matplotlib.pyplot as plt
 import xgboost as xgb
+import seaborn as sns
 
-from sklearn.metrics import confusion_matrix
+from sklearn.metrics import roc_curve, auc, confusion_matrix
 
 # plt.style.use('cms')
 plt.rcParams.update({
@@ -18,6 +19,46 @@ plt.rcParams.update({
     "lines.markersize": 3,
     "errorbar.capsize": 2,
 })
+
+def plot_multiclass_roc(clf, X_test, y_test, n_classes, year):
+    y_score = clf.predict_proba(X_test)
+
+    labels = {
+        0: "Signal",
+        1: "Jet-fakes",
+        2: "Embedded",
+    }
+
+    # structures
+    fpr = dict()
+    tpr = dict()
+    roc_auc = dict()
+
+    # calculate dummies once
+    y_test_dummies = pd.get_dummies(y_test, drop_first=False).values
+    for i in range(n_classes):
+        fpr[i], tpr[i], _ = roc_curve(y_test_dummies[:, i], y_score[:, i])
+        roc_auc[i] = auc(fpr[i], tpr[i])
+
+    # roc for each class
+    fig, ax = plt.subplots()
+    ax.plot([0, 1], [0, 1], 'k--')
+    ax.set_xlim([0.0, 1.0])
+    ax.set_ylim([0.0, 1.05])
+    ax.set_xlabel('False Positive Rate')
+    ax.set_ylabel('True Positive Rate')
+    for i in range(n_classes):
+        ax.plot(
+            fpr[i], tpr[i], 
+            label='{}: ROC score = {:.2f}'.format(labels[i], roc_auc[i])
+        )
+    ax.legend(
+        loc=0, labelspacing=0.1, borderpad=0.2,
+        fancybox=True, framealpha=0.6,
+        fontsize=9,
+    )
+    ax.grid(alpha=.4)
+    fig.savefig("multiclass-roc-{}.pdf".format(year), bbox_inches='tight')
 
 def plot_signal_background(data1, data2, column,
                         channel, sig_sample="",
@@ -115,8 +156,6 @@ def plot_roc_cutbased(data1, data2, column,
     return None
 
 
-
-
 def plot_roc_curve(fpr, tpr, auc, figname):
 
     fig, ax = plt.subplots()
@@ -137,20 +176,18 @@ def plot_roc_curve(fpr, tpr, auc, figname):
     return None
 
 
-def plot_scatter_matrix(X, figname):
-    ## THIS FUNCTION CURRENTLY DOESNT DO WHAT IT SHOULD
-    ##
+def pair_plot(X, y, figname):
 
-    # need to resample DataFrame
-    df = X.ix[random.sample(X.index, 100)]
-    # df =
+    df_y = pd.DataFrame(y, columns=["label"])
+    df = pd.concat([X, df_y], axis=1)
 
-    plt.figure()
-    sm = scatter_matrix(df, figsize=(20,20), alpha=0.4, s=60, c=['y','r'])
-    plt.savefig(figname)
+    # resample to only use 1000
+    df = df.loc[df["f5"] > 1]
+    df = df.ix[random.sample(df.index, 100)]
+
+    plot = sns.pairplot(df, hue="label")
+    plot.savefig(figname)
     print('Scatter matrix saved as {}'.format(figname))
-
-    return None
 
 
 def plot_confusion_matrix(y_test, y_pred, w_test, classes,
@@ -169,25 +206,26 @@ def plot_confusion_matrix(y_test, y_pred, w_test, classes,
 
     print(cm)
 
-    plt.figure()
-    plt.imshow(cm, interpolation='nearest', cmap=cmap)
-    plt.colorbar()
+    fig, ax = plt.subplots()
+    fig.figure()
+    fig.imshow(cm, interpolation='nearest', cmap=cmap)
+    fig.colorbar()
     tick_marks = np.arange(len(classes))
-    plt.xticks(tick_marks, classes, rotation=45)
-    plt.yticks(tick_marks, classes)
+    fig.xticks(tick_marks, classes, rotation=45)
+    fig.yticks(tick_marks, classes)
 
     fmt = '.3f'
     thresh = cm.max() / 2.
     for i, j in itertools.product(list(range(cm.shape[0])), list(range(cm.shape[1]))):
-        plt.text(j, i, format(cm[i, j], fmt),
+        fig.text(j, i, format(cm[i, j], fmt),
                  horizontalalignment='center',
                  color='w' if cm[i, j] > thresh else 'k')
 
-    plt.tight_layout(pad=1.4)
-    plt.ylabel('True label')
-    plt.xlabel('Predicted label')
+    fig.tight_layout(pad=1.4)
+    fig.ylabel('True label')
+    fig.xlabel('Predicted label')
 
-    plt.savefig(figname)
+    fig.savefig(figname)
     print('Confusion matrix saved as {}'.format(figname))
 
     return None
@@ -195,17 +233,23 @@ def plot_confusion_matrix(y_test, y_pred, w_test, classes,
 
 def plot_features(booster, imp_type, figname):
 
-    fig = plt.figure(figsize=(12,7))
+    fig = plt.figure(figsize=(10,6))
     axes = fig.add_subplot(111)
 
     if imp_type == 'weight':
-        xgb.plot_importance(booster, ax=axes, height=0.2, xlim=None, ylim=None,
-                title='', xlabel='F score', ylabel='Features', importance_type='weight')
+        xgb.plot_importance(
+            booster, ax=axes, height=0.2, xlim=None, ylim=None,
+            title='', xlabel='F-score', ylabel='Features',
+            importance_type='weight'
+        )
     elif imp_type == 'gain':
-        xgb.plot_importance(booster, ax=axes, height=0.2, xlim=None, ylim=None,
-                title='', xlabel='F score', ylabel='Features', importance_type='gain')
+        xgb.plot_importance(
+            booster, ax=axes, height=0.2, xlim=None, ylim=None,
+            title='', xlabel='F-score', ylabel='Features',
+            importance_type='gain',
+        )
 
-    fig.savefig(figname)
+    fig.savefig(figname, bbox_inches='tight')
     print('Feature importance saved as {}'.format(figname))
 
     return None
@@ -215,7 +259,7 @@ def plot_correlation_matrix(data, figname, **kwds):
 
     corrmat = data.corr(**kwds)
 
-    fig, ax1 = plt.subplots(ncols=1, figsize=(6,3))
+    fig, ax1 = plt.subplots(figsize=(6,5))
 
     opts = {'cmap': plt.get_cmap("RdBu"),
             'vmin': -1, 'vmax': +1}
@@ -225,15 +269,16 @@ def plot_correlation_matrix(data, figname, **kwds):
     ax1.set_title("")
 
     labels = corrmat.columns.values
+    print(labels)
+    # [x for x in var_kw[features[0]] 
     for ax in (ax1,):
         # shift location of ticks to center of the bins
         ax.set_xticks(np.arange(len(labels))+0.5, minor=False)
         ax.set_yticks(np.arange(len(labels))+0.5, minor=False)
-        ax.set_xticklabels(labels, minor=False, ha='right', rotation=70)
+        ax.set_xticklabels(labels, minor=False, ha='right', rotation=45)
         ax.set_yticklabels(labels, minor=False)
 
-    fig.tight_layout()
-    fig.savefig(figname)
+    fig.savefig(figname, bbox_inches='tight')
     print('Correlation matrix saved as {}'.format(figname))
 
 
@@ -352,3 +397,57 @@ def plot_learning_curve(model, metric, figname):
     print('Learning curve plotted as {}'.format(figname))
 
     return None
+
+######## KWARGS
+var_kw = {
+    "m_vis": r'$m_{\tau_{h}\tau_{h}} (\mathrm{GeV})$',
+    "svfit_mass": r'$m_{\tau\tau} (\mathrm{GeV})$',
+    "svfit_mass_err": r'$m_{\tau\tau}^{\mathrm{error}} (\mathrm{GeV})$',
+    "n_jets": r'$n_{\mathrm{jets}}$',
+    "n_btag": r'$n_{\mathrm{b-tag}}^{\mathrm{medium}}$',
+    "n_loose_btag": r'$n_{\mathrm{b-tag}}^{\mathrm{loose}}$',
+    "mjj": r'$m_{jj} (\mathrm{GeV})$',
+    "jdeta": r'$\Delta\eta(\vec{p}_{j_{1}}, \vec{p}_{j_{2}})$',
+    "jpt_1": r'$p_{\mathrm{T}}^{j_{1}} (\mathrm{GeV})$',
+    "jpt_2": r'$p_{\mathrm{T}}^{j_{2}} (\mathrm{GeV})$',
+    "jeta_1": r'$\eta_{j_{1}}$',
+    "jeta_2": r'$\eta_{j_{2}}$',
+    "shifted_dphi_jtt": r'$\Delta\phi(\vec{p}_j,\vec{p}_{\mathrm{Z}})$',
+    "shifted_dphi_jtt_smear": r'$\Delta\phi(\vec{p}_j,\vec{p}_{\mathrm{Z}})$',
+    "shifted_dphi_j20tt": r'$\Delta\phi(\vec{p}_j,\vec{p}_{\mathrm{Z}})$',
+    "shifted_dphi_j20tt_smear": r'$\Delta\phi(\vec{p}_j,\vec{p}_{\mathrm{Z}})$',
+    "sjdphi": r'$\Delta\phi(\vec{p}_{j_1}, \vec{p}_{j_2})$',
+    "sjdphi_smear": r'$\Delta\phi(\vec{p}_{j_1}, \vec{p}_{j_2})$',
+    "pt_tt": r'$p_{\mathrm{T}}^{\tau\tau} (\mathrm{GeV})$',
+    "pt_vis": r'$p_{\mathrm{T}}^{\tau_h\tau_h} (\mathrm{GeV})$',
+    "pt_1": r'$p_{\mathrm{T}}^{\tau_{h_{1}}} (\mathrm{GeV})$',
+    "pt_2": r'$p_{\mathrm{T}}^{\tau_{h_{2}}} (\mathrm{GeV})$',
+    "eta_1": r'$\eta_{\tau_{h_{1}}}$',
+    "eta_2": r'$\eta_{\tau_{h_{2}}}$',
+    "tau_decay_mode_1": r'$\tau_{h_{1}}\ \mathrm{decay\ mode}$',
+    "tau_decay_mode_2": r'$\tau_{h_{2}}\ \mathrm{decay\ mode}$',
+    "mva_dm_1": r'$\tau_{h_{1}}\ \mathrm{MVA\ decay\ mode}$',
+    "mva_dm_2": r'$\tau_{h_{2}}\ \mathrm{MVA\ decay\ mode}$',
+    "met": r'$p_{\mathrm{T}}^{\mathrm{miss}} (\mathrm{GeV})$',
+    "residual_pt": r'$(\vec{p}_{\mathrm{MET}} + \vec{p}_\mathrm{jet} + \vec{p}_\mathrm{Z})_{\mathrm{T}}\ (\mathrm{GeV})$',
+    "IC_15Mar2020_max_score": r'BDT score',
+    "IC_11May2020_max_score": r'BDT score',
+    "NN_score": r'NN score',
+    "Bin_number": r'Bin number',
+    "jmva_1": r'PU jet ID',
+    "jmva_2": r'PU jet ID',
+    "aco_angle_1": r'$\phi\mbox{*}_{\mathcal{CP}}$',
+}
+
+features = {
+    0: "jdeta",
+    1: "jpt_1", 
+    2: "m_vis",
+    3: "met", 
+    4: "mjj",
+    5: "n_jets", 
+    6: "pt_1",
+    7: "pt_tt",
+    8: "pt_vis",
+    9: "svfit_mass",
+}
